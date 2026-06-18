@@ -1,0 +1,38 @@
+name: Backup Supabase
+
+# Darmowy backup logiczny (dane + obrazy z bucketu) na free planie Supabase,
+# który nie ma automatycznych backupów. Wynik ląduje jako artefakt workflow.
+# Pełny restore = ten artefakt + supabase/migrations/ (schemat).
+
+on:
+  schedule:
+    - cron: "{{CRON_SCHEDULE}}" # np. "0 3 * * *" = codziennie 03:00 UTC
+  workflow_dispatch: {} # ręczne uruchomienie z zakładki Actions
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Zrzut bazy + Storage
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_OUT_DIR: backup-out
+        # Backup potrzebuje tylko klienta Supabase — lekka instalacja zamiast `npm ci`
+        # (omija cross-platformowy problem z optional-deps w package-lock).
+        run: |
+          npm install @supabase/supabase-js@2 --no-save --no-audit --no-fund
+          node scripts/backup.mjs
+
+      - name: Upload artefaktu
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backup-out
+          retention-days: 90
