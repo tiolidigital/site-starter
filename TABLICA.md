@@ -6,3 +6,5 @@
 - `metadata` w `app/layout.tsx` ma jeszcze tytuł i opis z Create Next App. · zauważone 2026-11-09
 
 ## Pomysły
+
+- Automatyczna kontrola w GitHubie przy każdym wypchnięciu (`npm test` + `npm run lint` ze strażnikiem skali), kopiowana z szablonem do każdej nowej strony. · zaproponowane 2026-11-09
