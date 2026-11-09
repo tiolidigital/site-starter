@@ -42,7 +42,6 @@ Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak s
   **Świadomy wyjątek:** w tej samej linii komentarz `skala-ok: <powód>`,
   np. `{/* skala-ok: baner partnera ma stałą wysokość */}`.
 - **Testy:** `npm test` (strażnik w obie strony, liczby skali przy 320 i 1440 px, kontrast kolorów).
-- **Strona próbna:** `/skala-proba` (`app/skala-proba/`), do usunięcia przy starcie nowej strony.
 
 ---
 
