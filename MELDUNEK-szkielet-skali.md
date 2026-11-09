@@ -72,6 +72,30 @@ i deklaracji ze skali z jawną listą wyjątków, kontrast sprawdzany liczbowo.
 - **Śmieci w CSS**: Tailwind wciągał przykładowe złe klasy z pliku testów. Wyłączyłem katalog `scripts` ze skanowania.
 - **Język strony**: szablon miał `lang="en"`, przestawiłem na `lang="pl"` (dzielenie wyrazów, czytniki ekranu).
 
+## Poprawka po oględzinach Bazy (2026-11-09)
+
+Baza obejrzała `/skala-proba` przy 1440 px: pomiary się zgadzały, ale znalazła dwa błędy.
+
+1. **Nagłówki wyglądały jak zwykły tekst** (ta sama wielkość i grubość). Moje reguły nagłówków stały w `:where()`,
+   czyli miały zerową wagę, a reset Tailwinda w tej samej warstwie ustawia nagłówkom „dziedzicz wielkość i grubość”
+   i wygrywał. Teraz reguły mają zwykłe selektory. Mają tę samą wagę co reset, a stoją po nim, więc wygrywają.
+   Sprawdziłem resztę reguł w `:where()`: ten sam konflikt dotyczył wysokości wiersza w przyciskach i polach
+   formularzy, bo reset ustawia im `font: inherit`. W warstwie bazowej nie ma już żadnego `:where()`.
+   W zbudowanym CSS reset stoi przed naszymi regułami: `h1{font-size:var(--tekst-xxl)}` i grubość 650 wygrywają.
+2. **Cytat miał kolorowy pasek z boku.** Usunięty. Cytat wyróżnia teraz wcięcie z obu stron i stonowany kolor tekstu.
+   Podpis na stronie próbnej poprawiony.
+
+Wyniki:
+- `npm test`: **23 z 23 zielonych**. Są trzy nowe testy: wielkość i grubość nagłówków nie stoją w `:where()`,
+  cała warstwa bazowa jest bez `:where()`, cytat nie ma obramowania.
+- **Dowód, że nowe testy łapią stary błąd:** na chwilę wstawiłem stare reguły z powrotem do `app/skala.css`
+  i wyszło 3 czerwone z 23. Potem je cofnąłem i drzewo znów zgadza się z commitem. Pierwszy test ma też
+  w środku fragment starej wersji i sprawdza, że go odrzuca.
+- `npm run lint`: zielono, strażnik czysto (7 plików). `npm run build`: zielono.
+
+Do ponownego obejrzenia przez Bazę na `/skala-proba`: nagłówki h1–h4 mają przy 1440 px kolejno ok. 42,6 / 32 / 24 / 18 px
+i grubość 650, a cytat nie ma paska.
+
 ## Co zostaje dla Bazy (pomiar w przeglądarce, ja nie uruchamiam serwera)
 
 Strona próbna jest gotowa: `npm run dev`, potem `http://localhost:3000/skala-proba`.
