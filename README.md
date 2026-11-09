@@ -8,11 +8,40 @@ Skeleton Next.js 16 + Tailwind v4 + Supabase + Sentry dla ścieżki **site-build
 ## Stack
 
 - **Next.js 16** App Router, TypeScript, Fluid Compute (Vercel)
-- **Tailwind v4** token-first (`@theme` w `globals.css`)
+- **Tailwind v4** + skala strony w `app/skala.css` (odstępy, tekst, kolory z kilku liczb, opis niżej)
 - **Supabase** — `lib/supabase/{client,server,public}.ts` (tryby danych: §1)
 - **Sentry** — manual wiring (`instrumentation.ts` + konfigi)
 - **Backup** — darmowy backup logiczny (`scripts/backup.mjs` + `.github/workflows/backup.yml`)
 - **Node 24** LTS (`.nvmrc`)
+
+---
+
+## Skala strony (odstępy, tekst, kolory)
+
+**Przy starcie strony ustaw własne wartości wejściowe** (baza odstępów, skoki, kolor marki, kroje).
+Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak siostry.
+
+- **Gdzie zmienić liczby:** `app/skala.css`, blok `WEJŚCIA` na górze. Reszta wylicza się sama
+  i płynnie przechodzi od telefonu (320 px) do komputera (1440 px). Zmiana w pliku wchodzi
+  na stronę po przebudowie (`npm run dev` odświeża sam, produkcja po `npm run build`).
+  Na żywo można podejrzeć efekt w przeglądarce, nadpisując zmienną w DevTools
+  (np. `--baza-odstep-pc` na `:root`).
+- **Stopnie odstępów:** `xs s m l xl xxl`, np. `p-m`, `gap-l`, `mt-xs`.
+  Sekcje: `py-sekcja-s`, `py-sekcja-m`, `py-sekcja-l`. Margines boczny strony: `px-margines`.
+- **Stopnie tekstu:** `text-xs … text-xxl` (treść to `text-m`). Nic poniżej 12 px, treść na telefonie
+  co najmniej 17 px. Nagłówki `h1–h4` mają rozmiary same z siebie. Domyślne `text-sm`, `text-2xl` są wyłączone.
+- **Kolory według roli:** `bg-tlo`, `bg-tlo-inne`, `text-tekst`, `text-stonowany`, `border-obramowanie`,
+  `bg-marka` + `text-na-marce`, `hover:bg-marka-hover`, `bg-marka-jasny`, `bg-marka-blady`, `text-marka-tekst`.
+  Wszystkie wyliczone z jednego koloru marki (OKLCH). Strona jest zawsze jasna.
+- **Rytm tekstu:** klasa `tresc` na rodzicu i wklejony tekst (akapity, nagłówki, listy, cytaty, linki)
+  od razu ma porządne odstępy i szerokość wiersza.
+- **Szerokości:** `max-w-miara` (wygodny wiersz tekstu), `max-w-strona` (cała treść).
+- **Strażnik:** `npm run skala` (jest też w `npm run lint`) wyłapuje liczby wpisane z ręki:
+  `py-16`, `p-[37px]`, `text-2xl`, `bg-zinc-50`, `bg-[#abc]`, `dark:`, `padding: 16px` w CSS,
+  `style={{ padding: 16 }}`. Podaje plik, linię i stopień do użycia.
+  **Świadomy wyjątek:** w tej samej linii komentarz `skala-ok: <powód>`,
+  np. `{/* skala-ok: baner partnera ma stałą wysokość */}`.
+- **Testy:** `npm test` (strażnik w obie strony, liczby skali przy 320 i 1440 px, kontrast kolorów).
 
 ---
 

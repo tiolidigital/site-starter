@@ -9,7 +9,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint && npm run skala",
+    "skala": "node scripts/skala.mjs",
+    "test": "node --test \"scripts/**/*.test.mjs\""
   },
   "dependencies": {
     "@sentry/nextjs": "^10.58.0",

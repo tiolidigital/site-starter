@@ -1,0 +1,395 @@
+/*
+ * SKALA STRONY – jedno miejsce na odstępy, tekst i kolory.
+ *
+ * Zmieniasz tylko blok WEJŚCIA poniżej. Reszta wylicza się sama (calc/clamp)
+ * i działa na całej stronie, także na nowych podstronach.
+ *
+ * PRZY STARCIE STRONY USTAW WŁASNE WARTOŚCI WEJŚCIOWE (baza, skoki, kolor marki,
+ * kroje). Jeden zestaw liczb to jedna strona w portfelu – strony nie mogą
+ * wyglądać jak siostry.
+ *
+ * Liczby są bez jednostek (piksele przy rozmiarze tekstu przeglądarki 16 px),
+ * bo tylko tak czysty CSS umie płynnie przejść między telefonem a komputerem.
+ * Zmiana w tym pliku wchodzi na stronę po przebudowie (npm run dev / build);
+ * na żywo w przeglądarce można ją podejrzeć, nadpisując zmienną w DevTools.
+ *
+ * Strażnik (npm run skala) pilnuje, żeby reszta kodu używała stopni stąd,
+ * a nie liczb wpisanych z ręki.
+ */
+
+:root {
+  /* ==================== WEJŚCIA ==================== */
+
+  /* Zakres płynności: szerokość telefonu i komputera (px). */
+  --ekran-tel: 320;
+  --ekran-pc: 1440;
+
+  /* Odstęp bazowy = stopień m (px) i skok między stopniami. */
+  --baza-odstep-tel: 24;
+  --baza-odstep-pc: 30;
+  --skok-odstep-tel: 1.333;
+  --skok-odstep-pc: 1.5;
+
+  /* Sekcje: ile razy większe od zwykłych stopni (sekcja m = baza × to). */
+  --mnoznik-sekcji-tel: 2;
+  --mnoznik-sekcji-pc: 3;
+
+  /* Margines boczny strony (px). */
+  --margines-tel: 16;
+  --margines-pc: 80;
+
+  /* Tekst podstawowy (px) i skok między stopniami tekstu i nagłówków.
+     Telefon ma 17, nie 16: treść nigdy poniżej 17 px na telefonie. */
+  --baza-tekst-tel: 17;
+  --baza-tekst-pc: 18;
+  --skok-tekst-tel: 1.2;
+  --skok-tekst-pc: 1.333;
+
+  /* Kolor marki w OKLCH: jasność 0–1, nasycenie 0–0,37, odcień 0–360. */
+  --marka-l: 0.52;
+  --marka-c: 0.13;
+  --marka-h: 255;
+
+  /* Kroje pisma. */
+  --kroj-tekst: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --kroj-naglowki: var(--kroj-tekst);
+
+  /* Najwęższa szerokość wiersza treści i szerokość strony. */
+  --miara: 68ch;
+  --szerokosc-strony: 1280px;
+
+  /* ============ WYLICZONE – nie zmieniaj ręcznie ============ */
+
+  /* Postęp między telefonem a komputerem: długość równa ułamkowi × 1px,
+     od 0 przy --ekran-tel do „1px” przy --ekran-pc. */
+  --postep: calc(
+    (100vw - var(--ekran-tel) * 1rem / 16) / (var(--ekran-pc) - var(--ekran-tel))
+  );
+
+  /* Odstępy: stopnie jako liczby (px) na obu krańcach. */
+  --o-m-tel: var(--baza-odstep-tel);
+  --o-s-tel: calc(var(--o-m-tel) / var(--skok-odstep-tel));
+  --o-xs-tel: calc(var(--o-s-tel) / var(--skok-odstep-tel));
+  --o-l-tel: calc(var(--o-m-tel) * var(--skok-odstep-tel));
+  --o-xl-tel: calc(var(--o-l-tel) * var(--skok-odstep-tel));
+  --o-xxl-tel: calc(var(--o-xl-tel) * var(--skok-odstep-tel));
+
+  --o-m-pc: var(--baza-odstep-pc);
+  --o-s-pc: calc(var(--o-m-pc) / var(--skok-odstep-pc));
+  --o-xs-pc: calc(var(--o-s-pc) / var(--skok-odstep-pc));
+  --o-l-pc: calc(var(--o-m-pc) * var(--skok-odstep-pc));
+  --o-xl-pc: calc(var(--o-l-pc) * var(--skok-odstep-pc));
+  --o-xxl-pc: calc(var(--o-xl-pc) * var(--skok-odstep-pc));
+
+  /* Odstępy płynne: dół i góra to wartości telefonu i komputera. */
+  --odstep-xs: clamp(
+    calc(min(var(--o-xs-tel), var(--o-xs-pc)) * 1rem / 16),
+    calc(var(--o-xs-tel) * 1rem / 16 + (var(--o-xs-pc) - var(--o-xs-tel)) * var(--postep)),
+    calc(max(var(--o-xs-tel), var(--o-xs-pc)) * 1rem / 16)
+  );
+  --odstep-s: clamp(
+    calc(min(var(--o-s-tel), var(--o-s-pc)) * 1rem / 16),
+    calc(var(--o-s-tel) * 1rem / 16 + (var(--o-s-pc) - var(--o-s-tel)) * var(--postep)),
+    calc(max(var(--o-s-tel), var(--o-s-pc)) * 1rem / 16)
+  );
+  --odstep-m: clamp(
+    calc(min(var(--o-m-tel), var(--o-m-pc)) * 1rem / 16),
+    calc(var(--o-m-tel) * 1rem / 16 + (var(--o-m-pc) - var(--o-m-tel)) * var(--postep)),
+    calc(max(var(--o-m-tel), var(--o-m-pc)) * 1rem / 16)
+  );
+  --odstep-l: clamp(
+    calc(min(var(--o-l-tel), var(--o-l-pc)) * 1rem / 16),
+    calc(var(--o-l-tel) * 1rem / 16 + (var(--o-l-pc) - var(--o-l-tel)) * var(--postep)),
+    calc(max(var(--o-l-tel), var(--o-l-pc)) * 1rem / 16)
+  );
+  --odstep-xl: clamp(
+    calc(min(var(--o-xl-tel), var(--o-xl-pc)) * 1rem / 16),
+    calc(var(--o-xl-tel) * 1rem / 16 + (var(--o-xl-pc) - var(--o-xl-tel)) * var(--postep)),
+    calc(max(var(--o-xl-tel), var(--o-xl-pc)) * 1rem / 16)
+  );
+  --odstep-xxl: clamp(
+    calc(min(var(--o-xxl-tel), var(--o-xxl-pc)) * 1rem / 16),
+    calc(var(--o-xxl-tel) * 1rem / 16 + (var(--o-xxl-pc) - var(--o-xxl-tel)) * var(--postep)),
+    calc(max(var(--o-xxl-tel), var(--o-xxl-pc)) * 1rem / 16)
+  );
+
+  /* Sekcje: mnożnik sekcji × stopnie s, m, l. */
+  --se-s-tel: calc(var(--mnoznik-sekcji-tel) * var(--o-s-tel));
+  --se-m-tel: calc(var(--mnoznik-sekcji-tel) * var(--o-m-tel));
+  --se-l-tel: calc(var(--mnoznik-sekcji-tel) * var(--o-l-tel));
+  --se-s-pc: calc(var(--mnoznik-sekcji-pc) * var(--o-s-pc));
+  --se-m-pc: calc(var(--mnoznik-sekcji-pc) * var(--o-m-pc));
+  --se-l-pc: calc(var(--mnoznik-sekcji-pc) * var(--o-l-pc));
+
+  --sekcja-s: clamp(
+    calc(min(var(--se-s-tel), var(--se-s-pc)) * 1rem / 16),
+    calc(var(--se-s-tel) * 1rem / 16 + (var(--se-s-pc) - var(--se-s-tel)) * var(--postep)),
+    calc(max(var(--se-s-tel), var(--se-s-pc)) * 1rem / 16)
+  );
+  --sekcja-m: clamp(
+    calc(min(var(--se-m-tel), var(--se-m-pc)) * 1rem / 16),
+    calc(var(--se-m-tel) * 1rem / 16 + (var(--se-m-pc) - var(--se-m-tel)) * var(--postep)),
+    calc(max(var(--se-m-tel), var(--se-m-pc)) * 1rem / 16)
+  );
+  --sekcja-l: clamp(
+    calc(min(var(--se-l-tel), var(--se-l-pc)) * 1rem / 16),
+    calc(var(--se-l-tel) * 1rem / 16 + (var(--se-l-pc) - var(--se-l-tel)) * var(--postep)),
+    calc(max(var(--se-l-tel), var(--se-l-pc)) * 1rem / 16)
+  );
+
+  --margines: clamp(
+    calc(min(var(--margines-tel), var(--margines-pc)) * 1rem / 16),
+    calc(var(--margines-tel) * 1rem / 16 + (var(--margines-pc) - var(--margines-tel)) * var(--postep)),
+    calc(max(var(--margines-tel), var(--margines-pc)) * 1rem / 16)
+  );
+
+  /* Tekst: stopnie jako liczby (px) na obu krańcach. */
+  --t-m-tel: var(--baza-tekst-tel);
+  --t-s-tel: calc(var(--t-m-tel) / var(--skok-tekst-tel));
+  --t-xs-tel: calc(var(--t-s-tel) / var(--skok-tekst-tel));
+  --t-l-tel: calc(var(--t-m-tel) * var(--skok-tekst-tel));
+  --t-xl-tel: calc(var(--t-l-tel) * var(--skok-tekst-tel));
+  --t-xxl-tel: calc(var(--t-xl-tel) * var(--skok-tekst-tel));
+
+  --t-m-pc: var(--baza-tekst-pc);
+  --t-s-pc: calc(var(--t-m-pc) / var(--skok-tekst-pc));
+  --t-xs-pc: calc(var(--t-s-pc) / var(--skok-tekst-pc));
+  --t-l-pc: calc(var(--t-m-pc) * var(--skok-tekst-pc));
+  --t-xl-pc: calc(var(--t-l-pc) * var(--skok-tekst-pc));
+  --t-xxl-pc: calc(var(--t-xl-pc) * var(--skok-tekst-pc));
+
+  /* Tekst płynny z twardym dołem 12 px: nic na stronie nie jest mniejsze. */
+  --tekst-xs: max(12px, clamp(
+    calc(min(var(--t-xs-tel), var(--t-xs-pc)) * 1rem / 16),
+    calc(var(--t-xs-tel) * 1rem / 16 + (var(--t-xs-pc) - var(--t-xs-tel)) * var(--postep)),
+    calc(max(var(--t-xs-tel), var(--t-xs-pc)) * 1rem / 16)
+  ));
+  --tekst-s: max(12px, clamp(
+    calc(min(var(--t-s-tel), var(--t-s-pc)) * 1rem / 16),
+    calc(var(--t-s-tel) * 1rem / 16 + (var(--t-s-pc) - var(--t-s-tel)) * var(--postep)),
+    calc(max(var(--t-s-tel), var(--t-s-pc)) * 1rem / 16)
+  ));
+  --tekst-m: max(12px, clamp(
+    calc(min(var(--t-m-tel), var(--t-m-pc)) * 1rem / 16),
+    calc(var(--t-m-tel) * 1rem / 16 + (var(--t-m-pc) - var(--t-m-tel)) * var(--postep)),
+    calc(max(var(--t-m-tel), var(--t-m-pc)) * 1rem / 16)
+  ));
+  --tekst-l: max(12px, clamp(
+    calc(min(var(--t-l-tel), var(--t-l-pc)) * 1rem / 16),
+    calc(var(--t-l-tel) * 1rem / 16 + (var(--t-l-pc) - var(--t-l-tel)) * var(--postep)),
+    calc(max(var(--t-l-tel), var(--t-l-pc)) * 1rem / 16)
+  ));
+  --tekst-xl: max(12px, clamp(
+    calc(min(var(--t-xl-tel), var(--t-xl-pc)) * 1rem / 16),
+    calc(var(--t-xl-tel) * 1rem / 16 + (var(--t-xl-pc) - var(--t-xl-tel)) * var(--postep)),
+    calc(max(var(--t-xl-tel), var(--t-xl-pc)) * 1rem / 16)
+  ));
+  --tekst-xxl: max(12px, clamp(
+    calc(min(var(--t-xxl-tel), var(--t-xxl-pc)) * 1rem / 16),
+    calc(var(--t-xxl-tel) * 1rem / 16 + (var(--t-xxl-pc) - var(--t-xxl-tel)) * var(--postep)),
+    calc(max(var(--t-xxl-tel), var(--t-xxl-pc)) * 1rem / 16)
+  ));
+
+  /* Wysokość wiersza liczona od wysokości liter danego kroju. */
+  --wiersz-tekst: calc(6px + 2ex);
+  --wiersz-naglowek: calc(4px + 2ex);
+
+  /* Kolory marki wyliczone z jednego wejścia. */
+  --kolor-marka: oklch(var(--marka-l) var(--marka-c) var(--marka-h));
+  --kolor-marka-hover: oklch(
+    max(0.15, calc(var(--marka-l) - 0.08)) var(--marka-c) var(--marka-h)
+  );
+  --kolor-marka-jasny: oklch(
+    clamp(0.86, calc(var(--marka-l) + 0.3), 0.93) calc(var(--marka-c) * 0.45) var(--marka-h)
+  );
+  --kolor-marka-blady: oklch(0.97 calc(var(--marka-c) * 0.15) var(--marka-h));
+  --kolor-marka-ciemny: oklch(
+    max(0.2, calc(var(--marka-l) - 0.18)) var(--marka-c) var(--marka-h)
+  );
+  /* Marka jako tekst na tle (linki): nigdy jaśniejsza niż 0,5, żeby dało się czytać. */
+  --kolor-marka-tekst: oklch(
+    min(0.5, var(--marka-l)) min(var(--marka-c), 0.2) var(--marka-h)
+  );
+  /* Tekst na tle marki: biały na ciemnej marce, czarny na jasnej.
+     Tu zgrubnie, po jasności OKLCH; niżej dokładnie, po luminancji. */
+  --kolor-na-marce: oklch(
+    clamp(0, calc((0.565 - var(--marka-l)) * 100000), 1) 0 0
+  );
+
+  /* Kolory według roli (neutralne, z lekkim odcieniem marki). */
+  --kolor-tlo: oklch(0.995 0.003 var(--marka-h));
+  --kolor-tlo-inne: oklch(0.97 0.006 var(--marka-h));
+  --kolor-tekst: oklch(0.22 0.015 var(--marka-h));
+  --kolor-stonowany: oklch(0.47 0.02 var(--marka-h));
+  --kolor-obramowanie: oklch(0.88 0.012 var(--marka-h));
+
+  /* Strony są zawsze jasne, także przy ciemnym motywie systemu. */
+  color-scheme: light;
+}
+
+/* Dokładny wybór tekstu na marce: biały albo czarny, zależnie od luminancji
+   koloru marki (próg 0,1791, przy którym oba dają ten sam kontrast, ok. 4,58).
+   Przeglądarki bez względnej składni koloru zostają przy wersji zgrubnej. */
+@supports (color: color(from red srgb-linear r g b)) {
+  :root {
+    --kolor-na-marce: color(
+      from var(--kolor-marka) srgb-linear
+      clamp(0, calc((0.1791 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000), 1)
+      clamp(0, calc((0.1791 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000), 1)
+      clamp(0, calc((0.1791 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000), 1)
+    );
+  }
+}
+
+/* Podpięcie pod Tailwinda: p-m, gap-l, py-sekcja-m, px-margines, text-l,
+   bg-marka, text-stonowany, border-obramowanie, max-w-miara… */
+@theme inline {
+  --spacing-xs: var(--odstep-xs);
+  --spacing-s: var(--odstep-s);
+  --spacing-m: var(--odstep-m);
+  --spacing-l: var(--odstep-l);
+  --spacing-xl: var(--odstep-xl);
+  --spacing-xxl: var(--odstep-xxl);
+  --spacing-sekcja-s: var(--sekcja-s);
+  --spacing-sekcja-m: var(--sekcja-m);
+  --spacing-sekcja-l: var(--sekcja-l);
+  --spacing-margines: var(--margines);
+
+  /* Domyślne rozmiary Tailwinda (text-sm, text-2xl…) wyłączone: tylko skala. */
+  --text-*: initial;
+  --text-xs: var(--tekst-xs);
+  --text-xs--line-height: var(--wiersz-tekst);
+  --text-s: var(--tekst-s);
+  --text-s--line-height: var(--wiersz-tekst);
+  --text-m: var(--tekst-m);
+  --text-m--line-height: var(--wiersz-tekst);
+  --text-l: var(--tekst-l);
+  --text-l--line-height: var(--wiersz-naglowek);
+  --text-xl: var(--tekst-xl);
+  --text-xl--line-height: var(--wiersz-naglowek);
+  --text-xxl: var(--tekst-xxl);
+  --text-xxl--line-height: var(--wiersz-naglowek);
+
+  --color-marka: var(--kolor-marka);
+  --color-marka-hover: var(--kolor-marka-hover);
+  --color-marka-jasny: var(--kolor-marka-jasny);
+  --color-marka-blady: var(--kolor-marka-blady);
+  --color-marka-ciemny: var(--kolor-marka-ciemny);
+  --color-marka-tekst: var(--kolor-marka-tekst);
+  --color-na-marce: var(--kolor-na-marce);
+  --color-tlo: var(--kolor-tlo);
+  --color-tlo-inne: var(--kolor-tlo-inne);
+  --color-tekst: var(--kolor-tekst);
+  --color-stonowany: var(--kolor-stonowany);
+  --color-obramowanie: var(--kolor-obramowanie);
+
+  --font-sans: var(--kroj-tekst);
+  --font-naglowki: var(--kroj-naglowki);
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --container-miara: var(--miara);
+  --container-strona: var(--szerokosc-strony);
+}
+
+@layer base {
+  body {
+    background: var(--kolor-tlo);
+    color: var(--kolor-tekst);
+    font-family: var(--kroj-tekst);
+    font-size: var(--tekst-m);
+  }
+
+  /* Zwykłe selektory, NIE :where(). Reset Tailwinda (h1–h6 z font-size i font-weight
+     „inherit”, przyciski i pola z „font: inherit”) stoi w tej samej warstwie base
+     z wagą jednego elementu. :where() ma wagę zero i przegrywa. Przy równej wadze
+     wygrywamy, bo ten plik ładuje się po resecie. */
+  body, p, li, dd, dt, blockquote, figcaption, td, th, label, input, textarea, select, button {
+    line-height: var(--wiersz-tekst);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--kroj-naglowki);
+    font-weight: 650;
+    line-height: var(--wiersz-naglowek);
+    text-wrap: balance;
+  }
+  h1 { font-size: var(--tekst-xxl); }
+  h2 { font-size: var(--tekst-xl); }
+  h3 { font-size: var(--tekst-l); }
+  h4, h5, h6 { font-size: var(--tekst-m); }
+
+  p, li, dd, blockquote, figcaption {
+    text-wrap: pretty;
+  }
+
+  /* Widoczne zaznaczenie przy obsłudze klawiaturą. */
+  :focus-visible {
+    outline: 2px solid var(--kolor-marka-tekst);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: var(--kolor-marka-jasny);
+    color: var(--kolor-tekst);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Rytm tekstu: wklejona treść (akapity, nagłówki, listy) od razu wygląda
+   porządnie. Odstępy liczone względem wielkości czcionki. */
+@layer components {
+  .tresc {
+    max-width: var(--miara);
+  }
+  .tresc > * {
+    margin-block: 0;
+  }
+  .tresc > * + * {
+    margin-block-start: 1em;
+  }
+  .tresc > :is(h1, h2, h3, h4, h5, h6):not(:first-child) {
+    margin-block-start: 1.2em;
+  }
+  .tresc > :is(h1, h2, h3, h4, h5, h6) + * {
+    margin-block-start: 0.5em;
+  }
+  .tresc :is(ul, ol) {
+    padding-inline-start: 1.25em;
+  }
+  .tresc ul {
+    list-style: disc;
+  }
+  .tresc ol {
+    list-style: decimal;
+  }
+  .tresc li + li,
+  .tresc li > :is(ul, ol) {
+    margin-block-start: 0.5em;
+  }
+  .tresc a {
+    color: var(--kolor-marka-tekst);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+  .tresc a:hover {
+    color: var(--kolor-marka-hover);
+  }
+  /* Cytat: wcięcie z obu stron i stonowany tekst, bez kolorowego paska. */
+  .tresc blockquote {
+    margin-inline: 1.5em;
+    color: var(--kolor-stonowany);
+  }
+  .tresc :is(strong, b) {
+    font-weight: 650;
+  }
+}
