@@ -89,7 +89,7 @@ export default function SkalaProba() {
           </ol>
           <h4>Nagłówek czwartego stopnia</h4>
           <blockquote>
-            Cytat wyróżniony kreską w jasnym odcieniu marki.
+            Cytat wyróżniony wcięciem i stonowanym kolorem tekstu, bez paska z boku.
           </blockquote>
         </article>
       </section>

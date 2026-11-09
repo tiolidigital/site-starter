@@ -373,3 +373,79 @@ test("wersja zgrubna (stare przeglądarki) słaba tylko w wąskim pasie jasnośc
     assert.ok(parseFloat(wpis.split(": ")[1]) >= 3.9, wpis);
   }
 });
+
+// ---------- Nagłówki kontra reset Tailwinda ----------
+
+// Reguły najwyższego poziomu z bloku @layer <nazwa> { … } (selektor + deklaracje).
+function regulyWarstwy(css, warstwa) {
+  const bez = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const start = bez.indexOf(`@layer ${warstwa} {`);
+  assert.ok(start >= 0, `brak @layer ${warstwa}`);
+  let glebokosc = 1;
+  let bufor = "";
+  const reguly = [];
+  for (let i = bez.indexOf("{", start) + 1; i < bez.length && glebokosc > 0; i++) {
+    const znak = bez[i];
+    if (znak === "{") {
+      glebokosc++;
+      if (glebokosc === 2) {
+        reguly.push({ selektor: bufor.trim(), deklaracje: "" });
+        bufor = "";
+      }
+      continue;
+    }
+    if (znak === "}") {
+      glebokosc--;
+      continue;
+    }
+    if (glebokosc === 2) reguly[reguly.length - 1].deklaracje += znak;
+    else if (glebokosc === 1) bufor += znak;
+  }
+  return reguly;
+}
+
+// Reguły nagłówków (h1–h6) z wielkością albo grubością, które stoją w :where(),
+// czyli mają wagę zero i przegrywają z resetem Tailwinda w tej samej warstwie.
+function naglowkiWWhere(css) {
+  return regulyWarstwy(css, "base").filter(
+    (r) => /\bh[1-6]\b/.test(r.selektor) && /font-(size|weight)\s*:/.test(r.deklaracje) && r.selektor.includes(":where("),
+  );
+}
+
+test("wielkość i grubość nagłówków nie stoi w :where() (wygrywa z resetem Tailwinda)", () => {
+  // Fragment starej wersji (commit 32844ce): ten sam sprawdzian musi ją odrzucić.
+  const staraWersja = [
+    "@layer base {",
+    "  :where(h1, h2, h3, h4, h5, h6) {",
+    "    font-weight: 650;",
+    "  }",
+    "  :where(h1) { font-size: var(--tekst-xxl); }",
+    "}",
+  ].join("\n");
+  assert.equal(naglowkiWWhere(staraWersja).length, 2, "sprawdzian nie łapie starej wersji");
+
+  assert.deepEqual(naglowkiWWhere(CSS_SKALI).map((r) => r.selektor), []);
+  const reguly = regulyWarstwy(CSS_SKALI, "base");
+  for (const [h, stopien] of [["h1", "xxl"], ["h2", "xl"], ["h3", "l"], ["h4", "m"]]) {
+    const regula = reguly.find(
+      (r) => r.selektor.split(",").map((s) => s.trim()).includes(h) && r.deklaracje.includes("font-size"),
+    );
+    assert.ok(regula, `brak wielkości dla ${h}`);
+    assert.match(regula.deklaracje, new RegExp(`font-size:\\s*var\\(--tekst-${stopien}\\)`), h);
+  }
+  assert.ok(
+    reguly.some((r) => r.selektor.split(",").map((s) => s.trim()).includes("h1") && /font-weight:\s*\d/.test(r.deklaracje)),
+    "brak grubości nagłówków",
+  );
+});
+
+test("w warstwie base żadna reguła nie stoi w :where() (ten sam konflikt z resetem)", () => {
+  const zWhere = regulyWarstwy(CSS_SKALI, "base").filter((r) => r.selektor.includes(":where("));
+  assert.deepEqual(zWhere.map((r) => r.selektor), []);
+});
+
+test("cytat bez kolorowego paska z boku", () => {
+  const cytat = regulyWarstwy(CSS_SKALI, "components").filter((r) => /blockquote/.test(r.selektor));
+  assert.ok(cytat.length > 0, "brak stylu cytatu");
+  for (const r of cytat) assert.doesNotMatch(r.deklaracje, /border/, r.selektor);
+});

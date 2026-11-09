@@ -299,22 +299,26 @@
     font-size: var(--tekst-m);
   }
 
-  :where(body, p, li, dd, dt, blockquote, figcaption, td, th, label, input, textarea, select, button) {
+  /* Zwykłe selektory, NIE :where(). Reset Tailwinda (h1–h6 z font-size i font-weight
+     „inherit”, przyciski i pola z „font: inherit”) stoi w tej samej warstwie base
+     z wagą jednego elementu. :where() ma wagę zero i przegrywa. Przy równej wadze
+     wygrywamy, bo ten plik ładuje się po resecie. */
+  body, p, li, dd, dt, blockquote, figcaption, td, th, label, input, textarea, select, button {
     line-height: var(--wiersz-tekst);
   }
 
-  :where(h1, h2, h3, h4, h5, h6) {
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--kroj-naglowki);
     font-weight: 650;
     line-height: var(--wiersz-naglowek);
     text-wrap: balance;
   }
-  :where(h1) { font-size: var(--tekst-xxl); }
-  :where(h2) { font-size: var(--tekst-xl); }
-  :where(h3) { font-size: var(--tekst-l); }
-  :where(h4, h5, h6) { font-size: var(--tekst-m); }
+  h1 { font-size: var(--tekst-xxl); }
+  h2 { font-size: var(--tekst-xl); }
+  h3 { font-size: var(--tekst-l); }
+  h4, h5, h6 { font-size: var(--tekst-m); }
 
-  :where(p, li, dd, blockquote, figcaption) {
+  p, li, dd, blockquote, figcaption {
     text-wrap: pretty;
   }
 
@@ -380,9 +384,9 @@
   .tresc a:hover {
     color: var(--kolor-marka-hover);
   }
+  /* Cytat: wcięcie z obu stron i stonowany tekst, bez kolorowego paska. */
   .tresc blockquote {
-    border-inline-start: 3px solid var(--kolor-marka-jasny);
-    padding-inline-start: 1em;
+    margin-inline: 1.5em;
     color: var(--kolor-stonowany);
   }
   .tresc :is(strong, b) {
