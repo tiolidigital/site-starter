@@ -23,3 +23,17 @@ który czyta wyłącznie pliki repo (Codex, Cursor) oraz człowiek zaglądający
   Kanon: `factory-kit/conventions/zamiatanie-porzuconej-roboty.md`.
 - **Po ludzku do właściciela** — skutek zamiast nazwy kodowej, liczba zawsze ze znaczeniem,
   osobny punkt „od Ciebie potrzebuję”. Pełna lista: `factory-kit/conventions/README.md`.
+
+## Skala strony – obowiązuje przy każdej zmianie wyglądu
+
+- Odstępy, rozmiary tekstu i kolory biorą się wyłącznie ze skali w `app/skala.css`.
+  **Przy starcie nowej strony ustaw własne wartości wejściowe** (blok `WEJŚCIA`: baza, skoki,
+  kolor marki, kroje), bo jeden wzór to jedna strona w portfelu i strony nie mogą wyglądać jak siostry.
+- Klasy: odstępy `p-m`, `gap-l` (stopnie `xs s m l xl xxl`), sekcje `py-sekcja-s/m/l`,
+  margines boczny `px-margines`, tekst `text-xs … text-xxl`, kolory według roli (`bg-tlo`,
+  `text-tekst`, `text-stonowany`, `border-obramowanie`, `bg-marka` + `text-na-marce`…).
+  Treść z akapitami i listami owijaj w `className="tresc"`.
+- Nie wpisuj liczb z ręki (`py-16`, `p-[37px]`, `text-2xl`, `bg-zinc-50`, `#abc`, `padding: 16px`)
+  ani wariantu `dark:` – strony są zawsze jasne. Pilnuje tego `npm run skala` (część `npm run lint`).
+  Świadomy wyjątek: komentarz `skala-ok: <powód>` w tej samej linii.
+- Zmiana liczb w `app/skala.css` wymaga przebudowy strony; testy liczb i strażnika: `npm test`.
