@@ -486,10 +486,12 @@
    klasy Tailwinda (np. w-full) mogą je uzupełniać. */
 @layer components {
   /* .przycisk – główny, w kolorze marki; .przycisk-drugi – obrys;
-     .przycisk-jasny – jasny, na ciemnym tle albo zdjęciu. */
+     .przycisk-jasny – jasny, na ciemnym tle albo zdjęciu;
+     .przycisk-cichy – bez tła i obrysu, tło pojawia się po najechaniu. */
   .przycisk,
   .przycisk-drugi,
-  .przycisk-jasny {
+  .przycisk-jasny,
+  .przycisk-cichy {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -541,7 +543,15 @@
     outline-color: var(--kolor-tlo);
   }
 
-  :is(.przycisk, .przycisk-drugi, .przycisk-jasny):is(:disabled, [aria-disabled="true"]) {
+  .przycisk-cichy {
+    background: transparent;
+    color: var(--kolor-marka-tekst);
+  }
+  .przycisk-cichy:hover:not(:disabled, [aria-disabled="true"]) {
+    background: var(--kolor-marka-blady);
+  }
+
+  :is(.przycisk, .przycisk-drugi, .przycisk-jasny, .przycisk-cichy):is(:disabled, [aria-disabled="true"]) {
     opacity: 0.5;
     cursor: not-allowed;
   }
@@ -586,17 +596,27 @@
     padding-block: var(--odstep-xs);
     resize: vertical;
   }
-  /* Własna strzałka listy (trójkąt z dwóch gradientów w kolorze tekstu). */
+  /* Własna strzałka listy: JEDEN gradient stożkowy w kolorze tekstu, czyli klin
+     z wierzchołkiem na dole kafelka, przycięty przez jego górną krawędź. Jeden kształt,
+     więc nie ma dwóch połówek, które mogłyby się rozjechać (stara wersja z dwóch
+     gradientów liniowych przy 1440 px dawała dwa przesunięte trójkąciki). */
   select.pole:not([multiple]) {
     appearance: none;
     padding-inline-end: calc(var(--pole-wciecie) + 1em);
-    background-image:
-      linear-gradient(45deg, transparent 50%, currentColor 50%),
-      linear-gradient(135deg, currentColor 50%, transparent 50%);
-    background-position:
-      calc(100% - var(--pole-wciecie) - 0.35em) 50%,
-      calc(100% - var(--pole-wciecie)) 50%;
-    background-size: 0.35em 0.35em;
+    background-image: conic-gradient(from -45deg at 50% 100%, currentColor 90deg, transparent 0);
+    background-position: right var(--pole-wciecie) center;
+    background-size: 0.7em 0.35em;
     background-repeat: no-repeat;
+  }
+  /* Ostre krawędzie przy każdej szerokości: kafelek ma parzystą szerokość w pełnych
+     pikselach i wysokość równą połowie, odsunięcie od prawej i od góry też w pełnych
+     pikselach. Przeglądarki bez round() zostają przy wersji wyżej (dalej jeden trójkąt).
+     Kroki 1px i 2px to siatka ekranu, nie liczby wyglądu. */
+  @supports (width: round(1px, 1px)) {
+    select.pole:not([multiple]) {
+      background-position-x: right round(var(--pole-wciecie), 1px);
+      background-position-y: round(50%, 1px);
+      background-size: round(0.7em, 2px) calc(round(0.7em, 2px) / 2);
+    }
   }
 }

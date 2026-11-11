@@ -20,6 +20,7 @@ const stany = [
 const przyciski = [
   ["Główny (.przycisk)", "przycisk"],
   ["Drugi, obrys (.przycisk-drugi)", "przycisk-drugi"],
+  ["Cichy, bez tła i obrysu (.przycisk-cichy, Button ghost)", "przycisk-cichy"],
 ] as const;
 
 const zaokraglenia = [

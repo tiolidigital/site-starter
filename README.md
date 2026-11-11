@@ -53,7 +53,8 @@ Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak s
 - **Przyciski:** wejścia `--przycisk-wysokosc` (nigdy mniej niż 44 px), `--przycisk-wciecie` (stopień odstępu),
   `--przycisk-kroj`, `--przycisk-zaokr`, `--przycisk-litery`. Gotowe klasy (zwykły CSS, działają też
   przy CSS modules i na `<a>`): `przycisk` (kolor marki), `przycisk-drugi` (obrys), `przycisk-jasny`
-  (na ciemnym tle lub zdjęciu). Stany: najechanie, widoczny obrys z klawiatury, wyłączony.
+  (na ciemnym tle lub zdjęciu), `przycisk-cichy` (bez tła i obrysu, tło po najechaniu). Wszystkie mają tę samą
+  wysokość, krój i wielkość napisu. Stany: najechanie, widoczny obrys z klawiatury, wyłączony.
   Po najechaniu przycisk marki odsuwa się od koloru napisu, więc kontrast tylko rośnie.
 - **Pola formularza:** wejścia `--pole-wysokosc`, `--pole-wciecie`, `--pole-obramowanie`, `--pole-zaokr`,
   `--pole-fokus` (kolor obramowania po kliknięciu, z koloru marki). Klasa `pole` na `input`, `textarea`, `select`.

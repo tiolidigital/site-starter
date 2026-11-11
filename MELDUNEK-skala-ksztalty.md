@@ -102,6 +102,30 @@ a strony mają tego dużo; łapie tylko klasy Tailwinda.
   a `@emnapi/wasi-threads` ma 1.2.2 zamiast 1.2.3. Naprawa bez internetu się nie udała (brak tych paczek w pamięci
   podręcznej npm). Naprawi to jedno `npm install` z internetem i commit samego `package-lock.json`. Wpisane do `TABLICA.md`.
 
+## Poprawki po oględzinach Bazy (2026-11-11)
+
+Baza obejrzała zrzuty 1440 i 320 px i zgłosiła dwie rzeczy. Obie poprawione, zrzutów nie robiłam (ogląda Baza).
+
+1. **Strzałka listy wyboru rozjeżdżała się przy 1440 px** na dwa przesunięte trójkąciki. Przyczyna: składała się
+   z dwóch osobnych gradientów, a ich rozmiar i pozycja wychodziły na ułamkach piksela, więc każda połówka
+   zaokrąglała się inaczej. Teraz strzałka to **jeden gradient stożkowy**, czyli jeden kształt, który nie ma się na co
+   rozjechać; kolor dalej bierze z koloru tekstu (także szary w polu wyłączonym). Do tego w przeglądarkach, które znają
+   `round()`, kafelek ma parzystą szerokość w pełnych pikselach i wysokość równą połowie, a odsunięcie od prawej i od góry
+   też jest w pełnych pikselach, więc krawędzie są ostre przy każdej szerokości. Starsze przeglądarki zostają przy jednym
+   trójkącie bez zaokrąglenia. Jedyne liczby w pikselach to kroki siatki ekranu (1 px, 2 px) w `app/skala.css`.
+   Nowy test pilnuje, że w tle jest dokładnie jeden gradient i że wersja z `round()` istnieje (stara wersja go nie przechodzi).
+2. **Przycisk ghost wyglądał jak drobny dopisek** (napis ok. 13 px, własne małe wcięcia). Doszła klasa Skali
+   `przycisk-cichy`: stoi na tej samej wspólnej regule co pozostałe przyciski (wysokość 48 px, wcięcie, krój 600,
+   napis `--tekst-m`, zaokrąglenie), bez tła i obrysu, napis w kolorze marki, po najechaniu blade tło marki, stan wyłączony
+   jak u innych. `Button variant="ghost"` używa teraz tej klasy. Test sprawdza, że wszystkie cztery odmiany stoją na wspólnej
+   regule i że cichy nie ma tła ani obrysu. Na stronie próbnej doszedł rząd „Cichy” we wszystkich czterech stanach.
+
+Po poprawkach: `npm test` **38 z 38**, `npm run lint` czysto, `npm run build` zielono; w gotowym CSS obie wersje strzałki są
+nietknięte.
+
+Do obejrzenia przez Bazę: strzałka listy wyboru przy 1440 i 320 px (pole zwykłe i wyłączone) oraz rząd „Cichy”
+na stronie próbnej obok przycisku głównego.
+
 ## Co zostaje
 
 - Strona próbna `app/skala-proba/` do usunięcia przed scaleniem (po zrzutach). Wpisane do `TABLICA.md`.

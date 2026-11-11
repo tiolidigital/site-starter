@@ -679,7 +679,7 @@ test("dlaczego nie --kolor-marka-hover: zawsze ciemnieje i pod czarnym napisem o
 test("składniki: przyciski i pole ze stanami, na zmiennych skali", () => {
   const reguly = regulyWarstwy(CSS_SKALI, "components");
   const znajdz = (wzor) => reguly.filter((r) => wzor.test(r.selektor));
-  for (const klasa of ["przycisk", "przycisk-drugi", "przycisk-jasny", "pole"]) {
+  for (const klasa of ["przycisk", "przycisk-drugi", "przycisk-jasny", "przycisk-cichy", "pole"]) {
     assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])`)).length > 0, `brak .${klasa}`);
     assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])[^,]*:hover`)).length > 0, `brak stanu hover dla .${klasa}`);
     assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])[^,]*:disabled`)).length > 0, `brak stanu disabled dla .${klasa}`);
@@ -700,4 +700,28 @@ test("składniki: przyciski i pole ze stanami, na zmiennych skali", () => {
   for (const zmienna of ["--pole-h", "--pole-wciecie", "--pole-obramowanie", "--pole-zaokr", "--linia"]) {
     assert.match(pole.deklaracje, new RegExp(`var\\(${zmienna}\\)`), zmienna);
   }
+  // Wszystkie odmiany przycisku stoją na jednej wspólnej regule (ta sama wysokość, krój, napis).
+  for (const klasa of ["przycisk-drugi", "przycisk-jasny", "przycisk-cichy"]) {
+    assert.match(przycisk.selektor, new RegExp(`\\.${klasa}(?![\\w-])`), `.${klasa} we wspólnej regule przycisków`);
+  }
+  const [cichy] = znajdz(/^\.przycisk-cichy$/);
+  assert.match(cichy.deklaracje, /background:\s*transparent/, "przycisk cichy bez tła");
+  assert.doesNotMatch(cichy.deklaracje, /border/, "przycisk cichy bez obrysu");
+});
+
+test("strzałka listy wyboru: jeden gradient, rozmiar i pozycja w pełnych pikselach", () => {
+  const bez = CSS_SKALI.replace(/\/\*[\s\S]*?\*\//g, "");
+  const reguly = [...bez.matchAll(/select\.pole:not\(\[multiple\]\)\s*\{([^}]*)\}/g)].map((m) => m[1]);
+  assert.equal(reguly.length, 2, "wersja zwykła i wersja z round()");
+  const [zwykla, zaokraglona] = reguly;
+  // Jeden kształt: dokładnie jeden gradient w obrazku tła (dwa gradienty rozjeżdżały się przy 1440 px).
+  const obraz = /background-image:\s*([^;]+);/.exec(zwykla)[1];
+  assert.equal((obraz.match(/gradient\(/g) ?? []).length, 1, obraz);
+  assert.match(obraz, /currentColor/, "kolor strzałki z koloru tekstu");
+  assert.match(bez, /@supports \(width: round\(1px, 1px\)\)\s*\{\s*select\.pole/, "wersja z round() tylko tam, gdzie działa");
+  assert.match(zaokraglona, /background-size:\s*round\(([^)]+), 2px\) calc\(round\(\1, 2px\) \/ 2\)/, "szerokość parzysta, wysokość połowa");
+  assert.match(zaokraglona, /background-position-x:\s*right round\(var\(--pole-wciecie\), 1px\)/);
+  assert.match(zaokraglona, /background-position-y:\s*round\(50%, 1px\)/);
+  // Wersja z round() nie ruszy obrazka: ten sam jeden gradient.
+  assert.doesNotMatch(zaokraglona, /background-image/);
 });

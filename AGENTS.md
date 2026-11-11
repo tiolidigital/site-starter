@@ -34,7 +34,7 @@ który czyta wyłącznie pliki repo (Codex, Cursor) oraz człowiek zaglądający
   `text-tekst`, `text-stonowany`, `border-obramowanie`, `bg-marka` + `text-na-marce`…).
   Treść z akapitami i listami owijaj w `className="tresc"`.
 - Kształty: `rounded-s/m/l/pelne`, `shadow-s/m/l`, `border-linia`. Przyciski i pola tylko gotowymi klasami
-  `przycisk`, `przycisk-drugi`, `przycisk-jasny`, `pole` (bez własnych wysokości, zaokrągleń i cieni).
+  `przycisk`, `przycisk-drugi`, `przycisk-jasny`, `przycisk-cichy`, `pole` (bez własnych wysokości, zaokrągleń i cieni).
 - Nie wpisuj liczb z ręki (`py-16`, `p-[37px]`, `text-2xl`, `bg-zinc-50`, `#abc`, `padding: 16px`,
   `rounded-lg`, `shadow-md`, `border-radius: 8px`)
   ani wariantu `dark:` – strony są zawsze jasne. Pilnuje tego `npm run skala` (część `npm run lint`).
