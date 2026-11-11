@@ -68,11 +68,15 @@ export const BLOKI_TEKSTU = "p, li, h1, h2, h3, h4, h5, h6, blockquote, figcapti
 // Tu tekstu się nie rusza: kod, pola, skrypty i wszystko oznaczone `data-bez-typografii`.
 const POMIJANE = /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|TEXTAREA|CODE|PRE|KBD|SAMP|VAR)$/;
 
+// Pomijany jest też tekst w innym języku: najbliższy atrybut `lang` musi zaczynać się od „pl”
+// (strona dwujęzyczna, cytat po angielsku). Brak `lang` w ogóle = tekst polski.
 function pomijany(wezel: Node): boolean {
+  let jezyk: string | null = null;
   for (let el = wezel.parentElement; el; el = el.parentElement) {
     if (POMIJANE.test(el.tagName) || el.isContentEditable || el.hasAttribute("data-bez-typografii")) return true;
+    if (jezyk === null && el.hasAttribute("lang")) jezyk = el.getAttribute("lang") ?? "";
   }
-  return false;
+  return jezyk !== null && jezyk !== "" && !/^pl\b/i.test(jezyk);
 }
 
 // Poprawia tekst w poddrzewie strony. Zapisuje tylko wtedy, gdy coś się zmienia, więc wołanie drugi raz
