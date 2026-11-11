@@ -33,11 +33,32 @@ Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak s
   (np. `--baza-odstep-pc` na `:root`).
 - **Stopnie odstępów:** `xs s m l xl xxl`, np. `p-m`, `gap-l`, `mt-xs`.
   Sekcje: `py-sekcja-s`, `py-sekcja-m`, `py-sekcja-l`. Margines boczny strony: `px-margines`.
-- **Stopnie tekstu:** `text-xs … text-xxl` (treść to `text-m`). Nic poniżej 12 px, treść na telefonie
-  co najmniej 17 px. Nagłówki `h1–h4` mają rozmiary same z siebie. Domyślne `text-sm`, `text-2xl` są wyłączone.
+- **Stopnie tekstu:** `text-xs … text-xxl` (treść to `text-m`). Treść na telefonie co najmniej 17 px.
+  Nagłówki `h1–h4` mają rozmiary same z siebie. Domyślne `text-sm`, `text-2xl` są wyłączone.
+- **Dolna granica małego tekstu:** wejście `--tekst-min` (domyślnie 15 px). Stopnie `xs` i `s` nigdy nie
+  schodzą niżej, więc przy dużym skoku dopisek pod formularzem czy komunikat błędu nie spada do 13 px.
+  Przy tej granicy `xs` i `s` mogą wyjść równe, to dopuszczalne. Twardy dół 12 px zostaje niezależnie od wejścia.
+- **Tytuł pierwszego ekranu:** wejścia `--baza-tytul-tel` i `--baza-tytul-pc` (domyślnie 36 i 64 px),
+  stopień ponad `xxl`, klasa `text-tytul` (w CSS `var(--tekst-tytul)`). Domyślnego `h1` nie zmienia.
+- **Który stopień biorą nagłówki:** wejścia `--naglowek-1`, `--naglowek-2`, `--naglowek-3`
+  (domyślnie `var(--tekst-xxl)`, `var(--tekst-xl)`, `var(--tekst-l)`). Np. `--naglowek-1: var(--tekst-tytul)`
+  daje każdemu `h1` wielkość tytułu. `h4–h6` mają zawsze stopień m.
+- **Grubości kroju:** wejścia `--grubosc-tekst` (400), `--grubosc-mocna` (650, `<strong>` w `.tresc`)
+  i `--grubosc-naglowki` (650). **Krój tylko w jednej grubości** (np. DM Serif Display, który istnieje
+  tylko w 400) wymaga ustawienia tu tej jedynej grubości, np. `--grubosc-naglowki: 400`. Inaczej przeglądarka
+  pogrubi go sztucznie i litery się rozmażą. To samo dotyczy `--przycisk-kroj`, gdy przyciski idą tym krojem.
 - **Kolory według roli:** `bg-tlo`, `bg-tlo-inne`, `text-tekst`, `text-stonowany`, `border-obramowanie`,
   `bg-marka` + `text-na-marce`, `hover:bg-marka-hover`, `bg-marka-jasny`, `bg-marka-blady`, `text-marka-tekst`.
   Wszystkie wyliczone z jednego koloru marki (OKLCH). Strona jest zawsze jasna.
+- **Odcień szarości:** wejście `--odcien-szarosci` (domyślnie 1). Tła, tekst, linie i cień mają lekki odcień
+  marki; 0 daje czystą szarość, 0,35 tylko ślad odcienia. Przydaje się przy ciepłej albo chłodnej marce,
+  przy której jasne tło wychodzi kremowe albo niebieskawe. Kolory marki go nie słuchają.
+- **Akcent (drugi kolor):** wejścia `--akcent-l`, `--akcent-c`, `--akcent-h`, ten sam zapis co marka
+  (domyślnie równe marce, więc drugi kolor pojawia się dopiero po wpisaniu własnych liczb). Klasa
+  `przycisk-akcent` (w Reakcie `<Button variant="accent">`), kolory `bg-akcent`, `text-na-akcencie`,
+  `hover:bg-akcent-hover`. Na wyróżniony przycisk, np. wysyłkę formularza, nie na paski czy obwódki.
+  Napis biały albo czarny dobiera się sam, a po najechaniu kolor odsuwa się od napisu, jak w przycisku marki,
+  więc kontrast tylko rośnie (testy sprawdzają to dla każdej jasności akcentu).
 - **Rytm tekstu:** klasa `tresc` na rodzicu i wklejony tekst (akapity, nagłówki, listy, cytaty, linki)
   od razu ma porządne odstępy i szerokość wiersza.
 - **Szerokości:** `max-w-miara` (wygodny wiersz tekstu), `max-w-strona` (cała treść).
@@ -82,8 +103,24 @@ Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak s
   (także `*.module.css`), `style={{ padding: 16, borderRadius: 8 }}`. Podaje plik, linię i stopień do użycia.
   **Świadomy wyjątek:** w tej samej linii komentarz `skala-ok: <powód>`,
   np. `{/* skala-ok: baner partnera ma stałą wysokość */}`.
+- **Warstwy (`@layer`): własne reguły bazowe strony wkładaj do `@layer base`.** Skala trzyma reset i reguły
+  bazowe w warstwie `base`, a gotowe składniki (`.tresc`, `.przycisk`, `.pole`) w warstwie `components`.
+  Reguła napisana luzem, poza warstwami, wygrywa z każdą regułą w warstwie, bez względu na swoistość.
+  Zwykłe zerowanie odnośników `a { color: inherit }` wpisane luzem zabiera więc napis z `<a className="przycisk">`,
+  a większa swoistość tego nie naprawi. Strażnik wyłapuje taką regułę (selektor bez klasy, np. `a`, `ul`, `*`,
+  `html`, poza `@layer`) w plikach `.css` i w `<style>` plików `.astro`. Tak jest dobrze:
+
+  ```css
+  /* app/globals.css, pod importami */
+  @layer base {
+    a { color: inherit; text-decoration: none; }
+    ul { list-style: none; }
+  }
+  ```
+
+  Reguły z klasą (`.stopka a { … }`) i same zmienne (`:root { --moja: … }`) mogą zostać luzem.
 - **Testy:** `npm test` (strażnik w obie strony, liczby skali i kształtów przy 320 i 1440 px, kontrast kolorów,
-  przycisków i pól).
+  przycisków marki i akcentu, pól, odcień szarości, granica małego tekstu, kaskada z warstwami).
 
 ---
 

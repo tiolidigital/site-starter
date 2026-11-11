@@ -45,10 +45,44 @@
   --skok-tekst-tel: 1.2;
   --skok-tekst-pc: 1.333;
 
+  /* Dolna granica tekstu (px): stopnie xs i s nigdy mniejsze. Przy dużym skoku
+     mały tekst spadałby do 13 px i niżej. Przy tej granicy xs i s mogą wyjść
+     równe, to dopuszczalne. Twardy dół 12 px zostaje niezależnie od tej liczby. */
+  --tekst-min: 15;
+
+  /* Wielki tytuł pierwszego ekranu (px), osobny stopień ponad xxl.
+     Klasa text-tytul; domyślnego h1 nie zmienia (do tego --naglowek-1). */
+  --baza-tytul-tel: 36;
+  --baza-tytul-pc: 64;
+
+  /* Który stopień tekstu bierze który nagłówek (h4–h6 to zawsze m).
+     Np. --naglowek-1: var(--tekst-tytul) daje h1 wielkości tytułu. */
+  --naglowek-1: var(--tekst-xxl);
+  --naglowek-2: var(--tekst-xl);
+  --naglowek-3: var(--tekst-l);
+
+  /* Grubości kroju: zwykły tekst, wyróżnienia (strong w .tresc) i nagłówki.
+     Krój tylko w jednej grubości (np. DM Serif Display 400) wymaga ustawienia
+     tu tej jedynej grubości, inaczej przeglądarka pogrubi go sztucznie. */
+  --grubosc-tekst: 400;
+  --grubosc-mocna: 650;
+  --grubosc-naglowki: 650;
+
   /* Kolor marki w OKLCH: jasność 0–1, nasycenie 0–0,37, odcień 0–360. */
   --marka-l: 0.52;
   --marka-c: 0.13;
   --marka-h: 255;
+
+  /* Drugi kolor (akcent), ten sam zapis co marka. Tylko na wyróżniony przycisk
+     (.przycisk-akcent), np. wysyłkę formularza. Domyślnie równy marce: drugi
+     kolor pojawia się dopiero, gdy wpiszesz tu własne liczby. */
+  --akcent-l: var(--marka-l);
+  --akcent-c: var(--marka-c);
+  --akcent-h: var(--marka-h);
+
+  /* Ile odcienia marki dostają szarości (tła, tekst, linie, cień):
+     1 = lekko zabarwione marką, 0 = czysta szarość bez odcienia. */
+  --odcien-szarosci: 1;
 
   /* Kroje pisma. */
   --kroj-tekst: var(--font-geist-sans), Arial, Helvetica, sans-serif;
@@ -187,13 +221,14 @@
   --t-xl-pc: calc(var(--t-l-pc) * var(--skok-tekst-pc));
   --t-xxl-pc: calc(var(--t-xl-pc) * var(--skok-tekst-pc));
 
-  /* Tekst płynny z twardym dołem 12 px: nic na stronie nie jest mniejsze. */
-  --tekst-xs: max(12px, clamp(
+  /* Tekst płynny. Małe stopnie (xs, s) nie schodzą poniżej --tekst-min,
+     a nic na stronie nie jest mniejsze niż twardy dół 12 px. */
+  --tekst-xs: max(12px, calc(var(--tekst-min) * 1rem / 16), clamp(
     calc(min(var(--t-xs-tel), var(--t-xs-pc)) * 1rem / 16),
     calc(var(--t-xs-tel) * 1rem / 16 + (var(--t-xs-pc) - var(--t-xs-tel)) * var(--postep)),
     calc(max(var(--t-xs-tel), var(--t-xs-pc)) * 1rem / 16)
   ));
-  --tekst-s: max(12px, clamp(
+  --tekst-s: max(12px, calc(var(--tekst-min) * 1rem / 16), clamp(
     calc(min(var(--t-s-tel), var(--t-s-pc)) * 1rem / 16),
     calc(var(--t-s-tel) * 1rem / 16 + (var(--t-s-pc) - var(--t-s-tel)) * var(--postep)),
     calc(max(var(--t-s-tel), var(--t-s-pc)) * 1rem / 16)
@@ -217,6 +252,13 @@
     calc(min(var(--t-xxl-tel), var(--t-xxl-pc)) * 1rem / 16),
     calc(var(--t-xxl-tel) * 1rem / 16 + (var(--t-xxl-pc) - var(--t-xxl-tel)) * var(--postep)),
     calc(max(var(--t-xxl-tel), var(--t-xxl-pc)) * 1rem / 16)
+  ));
+
+  /* Wielki tytuł: płynnie między telefonem a komputerem, z tym samym twardym dołem. */
+  --tekst-tytul: max(12px, clamp(
+    calc(min(var(--baza-tytul-tel), var(--baza-tytul-pc)) * 1rem / 16),
+    calc(var(--baza-tytul-tel) * 1rem / 16 + (var(--baza-tytul-pc) - var(--baza-tytul-tel)) * var(--postep)),
+    calc(max(var(--baza-tytul-tel), var(--baza-tytul-pc)) * 1rem / 16)
   ));
 
   /* Wysokość wiersza liczona od wysokości liter danego kroju. */
@@ -245,14 +287,27 @@
     clamp(0, calc((0.565 - var(--marka-l)) * 100000), 1) 0 0
   );
 
-  /* Kolory według roli (neutralne, z lekkim odcieniem marki). */
-  --kolor-tlo: oklch(0.995 0.003 var(--marka-h));
-  --kolor-tlo-inne: oklch(0.97 0.006 var(--marka-h));
-  --kolor-tekst: oklch(0.22 0.015 var(--marka-h));
-  --kolor-stonowany: oklch(0.47 0.02 var(--marka-h));
-  --kolor-obramowanie: oklch(0.88 0.012 var(--marka-h));
+  /* Akcent (drugi kolor): ten sam przepis co przycisk marki. Napis biały albo
+     czarny (tu zgrubnie, niżej dokładnie, po luminancji), a po najechaniu kolor
+     odsuwa się od napisu, więc kontrast tylko rośnie. */
+  --kolor-akcent: oklch(var(--akcent-l) var(--akcent-c) var(--akcent-h));
+  --kolor-na-akcencie: oklch(
+    clamp(0, calc((0.565 - var(--akcent-l)) * 100000), 1) 0 0
+  );
+  --kolor-przeciw-akcentowi: oklch(
+    clamp(0, calc((var(--akcent-l) - 0.565) * 100000), 1) 0 0
+  );
+  --kolor-akcent-hover: color-mix(in oklab, var(--kolor-akcent) 80%, var(--kolor-przeciw-akcentowi));
+
+  /* Kolory według roli (neutralne, z lekkim odcieniem marki; siłę odcienia
+     ustawia --odcien-szarosci). */
+  --kolor-tlo: oklch(0.995 calc(0.003 * var(--odcien-szarosci)) var(--marka-h));
+  --kolor-tlo-inne: oklch(0.97 calc(0.006 * var(--odcien-szarosci)) var(--marka-h));
+  --kolor-tekst: oklch(0.22 calc(0.015 * var(--odcien-szarosci)) var(--marka-h));
+  --kolor-stonowany: oklch(0.47 calc(0.02 * var(--odcien-szarosci)) var(--marka-h));
+  --kolor-obramowanie: oklch(0.88 calc(0.012 * var(--odcien-szarosci)) var(--marka-h));
   /* Obramowanie, które musi być widać (pola formularzy): co najmniej 3:1 do tła. */
-  --kolor-obramowanie-mocne: oklch(0.6 0.02 var(--marka-h));
+  --kolor-obramowanie-mocne: oklch(0.6 calc(0.02 * var(--odcien-szarosci)) var(--marka-h));
   /* Błąd (pole źle wypełnione): czerwień niezależna od marki, ciemna na tyle,
      żeby komunikat miał co najmniej 4,5:1 na obu tłach (ramka ma wtedy ponad 3:1). */
   --kolor-blad: oklch(0.5 0.19 27);
@@ -269,9 +324,9 @@
      rosnącą z siłą cienia. Celowo nie color-mix(): przy budowie dostaje on zastępczy,
      pełny kolor tekstu dla starych przeglądarek, czyli czarną smugę zamiast cienia.
      Ten zapis stara przeglądarka po prostu pominie i nie pokaże cienia. */
-  --cien-kolor-s: oklch(0.22 0.015 var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.06)));
-  --cien-kolor-m: oklch(0.22 0.015 var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.08)));
-  --cien-kolor-l: oklch(0.22 0.015 var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.1)));
+  --cien-kolor-s: oklch(0.22 calc(0.015 * var(--odcien-szarosci)) var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.06)));
+  --cien-kolor-m: oklch(0.22 calc(0.015 * var(--odcien-szarosci)) var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.08)));
+  --cien-kolor-l: oklch(0.22 calc(0.015 * var(--odcien-szarosci)) var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.1)));
   --cien-s: 0 1px 2px var(--cien-kolor-s);
   --cien-m: 0 1px 2px var(--cien-kolor-s), 0 4px 10px var(--cien-kolor-m);
   --cien-l: 0 2px 4px var(--cien-kolor-s), 0 12px 28px var(--cien-kolor-l);
@@ -288,9 +343,6 @@
     clamp(0, calc((var(--marka-l) - 0.565) * 100000), 1) 0 0
   );
   --przycisk-hover: color-mix(in oklab, var(--kolor-marka) 80%, var(--kolor-przeciw-marce));
-
-  /* Strony są zawsze jasne, także przy ciemnym motywie systemu. */
-  color-scheme: light;
 }
 
 /* Dokładny wybór tekstu na marce: biały albo czarny, zależnie od luminancji
@@ -307,6 +359,19 @@
     /* Odwrotność napisu na marce: czarny pod białym napisem, biały pod czarnym. */
     --kolor-przeciw-marce: color(
       from var(--kolor-marka) srgb-linear
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.1791) * 100000), 1)
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.1791) * 100000), 1)
+      clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.1791) * 100000), 1)
+    );
+    /* To samo dla akcentu. */
+    --kolor-na-akcencie: color(
+      from var(--kolor-akcent) srgb-linear
+      clamp(0, calc((0.1791 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000), 1)
+      clamp(0, calc((0.1791 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000), 1)
+      clamp(0, calc((0.1791 - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000), 1)
+    );
+    --kolor-przeciw-akcentowi: color(
+      from var(--kolor-akcent) srgb-linear
       clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.1791) * 100000), 1)
       clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.1791) * 100000), 1)
       clamp(0, calc((0.2126 * r + 0.7152 * g + 0.0722 * b - 0.1791) * 100000), 1)
@@ -342,6 +407,8 @@
   --text-xl--line-height: var(--wiersz-naglowek);
   --text-xxl: var(--tekst-xxl);
   --text-xxl--line-height: var(--wiersz-naglowek);
+  --text-tytul: var(--tekst-tytul);
+  --text-tytul--line-height: var(--wiersz-naglowek);
 
   --color-marka: var(--kolor-marka);
   --color-marka-hover: var(--kolor-marka-hover);
@@ -357,6 +424,9 @@
   --color-obramowanie: var(--kolor-obramowanie);
   --color-obramowanie-mocne: var(--kolor-obramowanie-mocne);
   --color-blad: var(--kolor-blad);
+  --color-akcent: var(--kolor-akcent);
+  --color-akcent-hover: var(--kolor-akcent-hover);
+  --color-na-akcencie: var(--kolor-na-akcencie);
 
   /* Domyślne zaokrąglenia i cienie Tailwinda (rounded-lg, shadow-md…) wyłączone:
      tylko skala. Działają dalej rounded-full (koło), rounded-none i shadow-none. */
@@ -382,12 +452,22 @@
   --container-strona: var(--szerokosc-strony);
 }
 
+/* Warstwy (@layer, kolejność z Tailwinda: theme, base, components, utilities):
+   reset i reguły bazowe w base, gotowe składniki (.tresc, .przycisk, .pole)
+   w components, klasy Tailwinda w utilities. Reguła strony spoza warstw wygrywa
+   z każdą z nich, więc własne reguły bazowe strony też idą do @layer base. */
 @layer base {
+  /* Strony są zawsze jasne, także przy ciemnym motywie systemu. */
+  :root {
+    color-scheme: light;
+  }
+
   body {
     background: var(--kolor-tlo);
     color: var(--kolor-tekst);
     font-family: var(--kroj-tekst);
     font-size: var(--tekst-m);
+    font-weight: var(--grubosc-tekst);
   }
 
   /* Zwykłe selektory, NIE :where(). Reset Tailwinda (h1–h6 z font-size i font-weight
@@ -400,13 +480,13 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--kroj-naglowki);
-    font-weight: 650;
+    font-weight: var(--grubosc-naglowki);
     line-height: var(--wiersz-naglowek);
     text-wrap: balance;
   }
-  h1 { font-size: var(--tekst-xxl); }
-  h2 { font-size: var(--tekst-xl); }
-  h3 { font-size: var(--tekst-l); }
+  h1 { font-size: var(--naglowek-1); }
+  h2 { font-size: var(--naglowek-2); }
+  h3 { font-size: var(--naglowek-3); }
   h4, h5, h6 { font-size: var(--tekst-m); }
 
   p, li, dd, blockquote, figcaption {
@@ -481,7 +561,7 @@
     color: var(--kolor-stonowany);
   }
   .tresc :is(strong, b) {
-    font-weight: 650;
+    font-weight: var(--grubosc-mocna);
   }
 }
 
@@ -489,10 +569,12 @@
    więc działają też przy CSS modules i na <a>. Wszystko na zmiennych skali;
    klasy Tailwinda (np. w-full) mogą je uzupełniać. */
 @layer components {
-  /* .przycisk – główny, w kolorze marki; .przycisk-drugi – obrys;
+  /* .przycisk – główny, w kolorze marki; .przycisk-akcent – w drugim kolorze
+     (wejścia --akcent-*), np. wysyłka formularza; .przycisk-drugi – obrys;
      .przycisk-jasny – jasny, na ciemnym tle albo zdjęciu;
      .przycisk-cichy – bez tła i obrysu, tło pojawia się po najechaniu. */
   .przycisk,
+  .przycisk-akcent,
   .przycisk-drugi,
   .przycisk-jasny,
   .przycisk-cichy {
@@ -525,6 +607,14 @@
     background: var(--przycisk-hover);
   }
 
+  .przycisk-akcent {
+    background: var(--kolor-akcent);
+    color: var(--kolor-na-akcencie);
+  }
+  .przycisk-akcent:hover:not(:disabled, [aria-disabled="true"]) {
+    background: var(--kolor-akcent-hover);
+  }
+
   .przycisk-drugi {
     background: transparent;
     color: var(--kolor-marka-tekst);
@@ -555,7 +645,7 @@
     background: var(--kolor-marka-blady);
   }
 
-  :is(.przycisk, .przycisk-drugi, .przycisk-jasny, .przycisk-cichy):is(:disabled, [aria-disabled="true"]) {
+  :is(.przycisk, .przycisk-akcent, .przycisk-drugi, .przycisk-jasny, .przycisk-cichy):is(:disabled, [aria-disabled="true"]) {
     opacity: 0.5;
     cursor: not-allowed;
   }

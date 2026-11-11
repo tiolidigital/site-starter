@@ -279,16 +279,41 @@ test("skala płynie między telefonem a komputerem", () => {
   }
 });
 
-test("tekst nigdy poniżej 12 px, treść na telefonie co najmniej 17 px", () => {
+test("tekst nigdy poniżej dolnej granicy (15 px), treść na telefonie co najmniej 17 px", () => {
   for (const szerokosc of [280, 320, 375, 768, 1024, 1440, 1920]) {
-    for (const s of ["xs", "s", "m", "l", "xl", "xxl"]) {
-      assert.ok(wartosc(`--tekst-${s}`, szerokosc) >= 12, `--tekst-${s} przy ${szerokosc}`);
+    for (const s of ["xs", "s", "m", "l", "xl", "xxl", "tytul"]) {
+      assert.ok(wartosc(`--tekst-${s}`, szerokosc) >= 15 - 0.01, `--tekst-${s} przy ${szerokosc}`);
     }
     assert.ok(wartosc("--tekst-m", szerokosc) >= 17, `--tekst-m przy ${szerokosc}`);
   }
-  // Bez twardego dołu xs na telefonie miałby ok. 11,8 px, a na komputerze ok. 10,1 px.
-  blisko(wartosc("--tekst-xs", 320), 12, "--tekst-xs przy 320");
-  blisko(wartosc("--tekst-xs", 1440), 12, "--tekst-xs przy 1440");
+  // Bez granicy xs na telefonie miałby ok. 11,8 px, a na komputerze ok. 10,1 px; s ok. 14,2 i 13,5 px.
+  // Przy granicy 15 px xs i s wychodzą równe: to dopuszczalne.
+  for (const s of ["xs", "s"]) {
+    blisko(wartosc(`--tekst-${s}`, 320), 15, `--tekst-${s} przy 320`);
+    blisko(wartosc(`--tekst-${s}`, 1440), 15, `--tekst-${s} przy 1440`);
+  }
+});
+
+test("--tekst-min: granica małego tekstu z jednego wejścia, twardy dół 12 px zostaje", () => {
+  // Makieta Manusa (skok 1,38): bez granicy mały tekst miał 13 px na komputerze.
+  const manus = { "--skok-tekst-tel": "1.25", "--skok-tekst-pc": "1.38" };
+  blisko(wartosc("--tekst-s", 1440, manus), 15, "s u Manusa przy 1440");
+  blisko(wartosc("--tekst-s", 320, manus), 15, "s u Manusa przy 320");
+  blisko(wartosc("--tekst-xs", 1440, manus), 15, "xs u Manusa przy 1440");
+  // Granica 16: oba małe stopnie rosną, większe zostają.
+  const wyzej = { "--tekst-min": "16" };
+  for (const szerokosc of [320, 1440]) {
+    blisko(wartosc("--tekst-s", szerokosc, wyzej), 16, `s przy ${szerokosc}`);
+    blisko(wartosc("--tekst-xs", szerokosc, wyzej), 16, `xs przy ${szerokosc}`);
+  }
+  blisko(wartosc("--tekst-m", 1440, wyzej), 18, "m bez zmian");
+  // Granica 13: s wraca do swojej wartości ze skoku, xs zatrzymuje się na 13.
+  const nizej = { "--tekst-min": "13" };
+  blisko(wartosc("--tekst-s", 1440, nizej), 18 / 1.333, "s przy 1440 i granicy 13");
+  blisko(wartosc("--tekst-xs", 1440, nizej), 13, "xs przy 1440 i granicy 13");
+  blisko(wartosc("--tekst-s", 320, nizej), 17 / 1.2, "s przy 320 i granicy 13");
+  // Granica poniżej 12 nie przebije twardego dołu.
+  blisko(wartosc("--tekst-xs", 1440, { "--tekst-min": "8" }), 12, "twardy dół 12 px");
 });
 
 test("zmiana samej liczby bazowej zmienia odstępy całej strony", () => {
@@ -404,6 +429,8 @@ const PARY = [
   // Komunikat błędu pod polem (tekst) i ramka pola z błędem.
   ["--kolor-blad", "--kolor-tlo", 4.5],
   ["--kolor-blad", "--kolor-tlo-inne", 4.5],
+  // Przycisk akcentu (domyślnie akcent = marka; własne akcenty sprawdza przemiatanie niżej).
+  ["--kolor-na-akcencie", "--kolor-akcent", 4.5],
 ];
 
 test("kontrast ról: domyślna marka i skrajne", (t) => {
@@ -417,15 +444,15 @@ test("kontrast ról: domyślna marka i skrajne", (t) => {
 });
 
 // Dokładna wersja z @supports: kanały r, g, b liniowego sRGB podstawione do wzoru z CSS.
-function naMarceDokladnie(podmiany, nazwa = "--kolor-na-marce") {
+function naMarceDokladnie(podmiany, nazwa = "--kolor-na-marce", zrodlo = "--kolor-marka") {
   const zm = zmienne(CSS_SKALI, podmiany);
   const supports = /@supports[^{]*\{\s*:root\s*\{([\s\S]*?)\n {2}\}\n\}/.exec(CSS_SKALI);
   assert.ok(supports, "brak bloku @supports z dokładnymi kolorami");
-  const blok = new RegExp(`${nazwa}:\\s*color\\(\\s*from var\\(--kolor-marka\\) srgb-linear([\\s\\S]*?)\\);`).exec(
+  const blok = new RegExp(`${nazwa}:\\s*color\\(\\s*from var\\(${zrodlo}\\) srgb-linear([\\s\\S]*?)\\);`).exec(
     supports[1].replace(/\/\*[\s\S]*?\*\//g, ""),
   );
   assert.ok(blok, `brak dokładnej wersji ${nazwa} w @supports`);
-  const [L, C, h] = argumentyOklch(rozwin(zm["--kolor-marka"], zm));
+  const [L, C, h] = argumentyOklch(rozwin(zm[zrodlo], zm));
   const [r, g, b] = liniowyRgb(L, C, h);
   const kanaly = blok[1].trim().split(/\n\s*/);
   assert.equal(kanaly.length, 3);
@@ -433,12 +460,12 @@ function naMarceDokladnie(podmiany, nazwa = "--kolor-na-marce") {
   return 0.2126 * szary + 0.7152 * szary + 0.0722 * szary; // szary: luminancja = kanał
 }
 
-function przemiatanieMarek(sprawdz) {
+function przemiatanieMarek(sprawdz, przedrostek = "--marka") {
   const slabe = [];
   for (let l = 0.2; l <= 0.95; l += 0.01) {
     for (const h of [30, 100, 145, 200, 255, 320]) {
       for (const c of [0.04, 0.12, 0.2]) {
-        const podmiany = { "--marka-l": l.toFixed(2), "--marka-c": String(c), "--marka-h": String(h) };
+        const podmiany = { [`${przedrostek}-l`]: l.toFixed(2), [`${przedrostek}-c`]: String(c), [`${przedrostek}-h`]: String(h) };
         const k = sprawdz(podmiany);
         if (k < 4.5) slabe.push(`L ${l.toFixed(2)} C ${c} H ${h}: ${k.toFixed(2)}`);
       }
@@ -527,17 +554,21 @@ test("wielkość i grubość nagłówków nie stoi w :where() (wygrywa z resetem
 
   assert.deepEqual(naglowkiWWhere(CSS_SKALI).map((r) => r.selektor), []);
   const reguly = regulyWarstwy(CSS_SKALI, "base");
+  const zm = zmienne(CSS_SKALI);
+  // h1–h3 przez wejścia --naglowek-1/2/3, domyślnie te same stopnie co przed częścią 3.
   for (const [h, stopien] of [["h1", "xxl"], ["h2", "xl"], ["h3", "l"], ["h4", "m"]]) {
     const regula = reguly.find(
       (r) => r.selektor.split(",").map((s) => s.trim()).includes(h) && r.deklaracje.includes("font-size"),
     );
     assert.ok(regula, `brak wielkości dla ${h}`);
-    assert.match(regula.deklaracje, new RegExp(`font-size:\\s*var\\(--tekst-${stopien}\\)`), h);
+    const wielkosc = /font-size:\s*var\((--[\w-]+)\)/.exec(regula.deklaracje)[1];
+    const stopienNaglowka = /^--naglowek-\d$/.test(wielkosc) ? /^var\((--[\w-]+)\)$/.exec(zm[wielkosc])[1] : wielkosc;
+    assert.equal(stopienNaglowka, `--tekst-${stopien}`, h);
   }
-  assert.ok(
-    reguly.some((r) => r.selektor.split(",").map((s) => s.trim()).includes("h1") && /font-weight:\s*\d/.test(r.deklaracje)),
-    "brak grubości nagłówków",
-  );
+  const grubosc = reguly.find((r) => r.selektor.split(",").map((s) => s.trim()).includes("h1") && /font-weight:/.test(r.deklaracje));
+  assert.ok(grubosc, "brak grubości nagłówków");
+  assert.match(grubosc.deklaracje, /font-weight:\s*var\(--grubosc-naglowki\)/);
+  assert.equal(zm["--grubosc-naglowki"], "650", "domyślna grubość nagłówków jak przed częścią 3");
 });
 
 test("w warstwie base żadna reguła nie stoi w :where() (ten sam konflikt z resetem)", () => {
@@ -645,15 +676,18 @@ test("Tailwind dostaje kształty, a domyślne zaokrąglenia i cienie są wyłąc
 });
 
 // Kolor przycisku po najechaniu (color-mix w OKLab z kolorem „przeciw marce”), wersja dokładna.
-function przyciskHoverDokladnie(podmiany) {
+function przyciskHoverDokladnie(
+  podmiany,
+  { hover = "--przycisk-hover", zrodlo = "--kolor-marka", przeciw = "--kolor-przeciw-marce" } = {},
+) {
   const zm = zmienne(CSS_SKALI, podmiany);
-  const mix = /^color-mix\(in oklab, var\(--kolor-marka\) (\d+)%, var\(--kolor-przeciw-marce\)\)$/.exec(zm["--przycisk-hover"]);
-  assert.ok(mix, "--przycisk-hover: mieszanka marki z kolorem przeciw marce");
+  const mix = new RegExp(`^color-mix\\(in oklab, var\\(${zrodlo}\\) (\\d+)%, var\\(${przeciw}\\)\\)$`).exec(zm[hover]);
+  assert.ok(mix, `${hover}: mieszanka ${zrodlo} z ${przeciw}`);
   const u = parseFloat(mix[1]) / 100;
-  const [L, C, h] = argumentyOklch(rozwin(zm["--kolor-marka"], zm));
-  // Przeciw marce to szary o liniowej wartości 0 albo 1, czyli w OKLab L = 0 albo 1, bez nasycenia.
-  const przeciw = naMarceDokladnie(podmiany, "--kolor-przeciw-marce");
-  return [u * L + (1 - u) * Math.cbrt(przeciw), u * C, h];
+  const [L, C, h] = argumentyOklch(rozwin(zm[zrodlo], zm));
+  // Kolor „przeciw” to szary o liniowej wartości 0 albo 1, czyli w OKLab L = 0 albo 1, bez nasycenia.
+  const y = naMarceDokladnie(podmiany, przeciw, zrodlo);
+  return [u * L + (1 - u) * Math.cbrt(y), u * C, h];
 }
 
 test("przycisk główny: napis czytelny na marce i po najechaniu, przy każdej marce", () => {
@@ -682,7 +716,7 @@ test("dlaczego nie --kolor-marka-hover: zawsze ciemnieje i pod czarnym napisem o
 test("składniki: przyciski i pole ze stanami, na zmiennych skali", () => {
   const reguly = regulyWarstwy(CSS_SKALI, "components");
   const znajdz = (wzor) => reguly.filter((r) => wzor.test(r.selektor));
-  for (const klasa of ["przycisk", "przycisk-drugi", "przycisk-jasny", "przycisk-cichy", "pole"]) {
+  for (const klasa of ["przycisk", "przycisk-akcent", "przycisk-drugi", "przycisk-jasny", "przycisk-cichy", "pole"]) {
     assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])`)).length > 0, `brak .${klasa}`);
     assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])[^,]*:hover`)).length > 0, `brak stanu hover dla .${klasa}`);
     assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])[^,]*:disabled`)).length > 0, `brak stanu disabled dla .${klasa}`);
@@ -704,7 +738,7 @@ test("składniki: przyciski i pole ze stanami, na zmiennych skali", () => {
     assert.match(pole.deklaracje, new RegExp(`var\\(${zmienna}\\)`), zmienna);
   }
   // Wszystkie odmiany przycisku stoją na jednej wspólnej regule (ta sama wysokość, krój, napis).
-  for (const klasa of ["przycisk-drugi", "przycisk-jasny", "przycisk-cichy"]) {
+  for (const klasa of ["przycisk-akcent", "przycisk-drugi", "przycisk-jasny", "przycisk-cichy"]) {
     assert.match(przycisk.selektor, new RegExp(`\\.${klasa}(?![\\w-])`), `.${klasa} we wspólnej regule przycisków`);
   }
   const [cichy] = znajdz(/^\.przycisk-cichy$/);
@@ -901,4 +935,275 @@ test("komunikat pod polem: kolor błędu, stopień tekstu s, bez paska i bez lic
   for (const r of reguly.filter((r) => /pole-blad|aria-invalid|pole-komunikat/.test(r.selektor))) {
     assert.doesNotMatch(r.deklaracje, /\d\s*(px|rem|em)\b|#[0-9a-f]{3,8}\b|oklch\(|rgb\(/i, r.selektor);
   }
+});
+
+// ---------- Część 3: wejścia z makiety Manusa ----------
+
+const MOTYW = /@theme inline\s*\{([\s\S]*?)\n\}/.exec(CSS_SKALI)[1];
+
+test("tytuł: osobny stopień ponad xxl, płynny między 320 a 1440 px", () => {
+  blisko(wartosc("--tekst-tytul", 320), 36, "--tekst-tytul przy 320");
+  blisko(wartosc("--tekst-tytul", 1440), 64, "--tekst-tytul przy 1440");
+  blisko(wartosc("--tekst-tytul", 280), 36, "--tekst-tytul przy 280");
+  blisko(wartosc("--tekst-tytul", 2560), 64, "--tekst-tytul przy 2560");
+  blisko(wartosc("--tekst-tytul", 880), 50, "--tekst-tytul przy 880");
+  for (const szerokosc of [280, 320, 768, 1440, 1920]) {
+    assert.ok(wartosc("--tekst-tytul", szerokosc) > wartosc("--tekst-xxl", szerokosc), `tytuł > xxl przy ${szerokosc}`);
+  }
+  // Wejścia Manusa: 36 i 124.
+  const manus = { "--baza-tytul-tel": "36", "--baza-tytul-pc": "124" };
+  blisko(wartosc("--tekst-tytul", 320, manus), 36, "tytuł Manusa przy 320");
+  blisko(wartosc("--tekst-tytul", 1440, manus), 124, "tytuł Manusa przy 1440");
+  // Klasa text-tytul z wierszem nagłówka.
+  assert.match(MOTYW, /--text-tytul: var\(--tekst-tytul\);/);
+  assert.match(MOTYW, /--text-tytul--line-height: var\(--wiersz-naglowek\);/);
+  // Domyślny h1 tytułu nie bierze.
+  blisko(wartosc("--naglowek-1", 1440), wartosc("--tekst-xxl", 1440), "h1 domyślnie xxl");
+});
+
+test("--naglowek-1/2/3: h1–h3 biorą wskazany stopień, domyślnie xxl, xl, l", () => {
+  for (const szerokosc of [320, 1440]) {
+    blisko(wartosc("--naglowek-1", szerokosc), wartosc("--tekst-xxl", szerokosc), `h1 przy ${szerokosc}`);
+    blisko(wartosc("--naglowek-2", szerokosc), wartosc("--tekst-xl", szerokosc), `h2 przy ${szerokosc}`);
+    blisko(wartosc("--naglowek-3", szerokosc), wartosc("--tekst-l", szerokosc), `h3 przy ${szerokosc}`);
+  }
+  // Układ Manusa: h1 = tytuł, h2 = xxl, h3 = l.
+  const manus = {
+    "--naglowek-1": "var(--tekst-tytul)",
+    "--naglowek-2": "var(--tekst-xxl)",
+    "--baza-tytul-pc": "124",
+  };
+  blisko(wartosc("--naglowek-1", 320, manus), 36, "h1 Manusa przy 320");
+  blisko(wartosc("--naglowek-1", 1440, manus), 124, "h1 Manusa przy 1440");
+  blisko(wartosc("--naglowek-2", 320, manus), 17 * 1.2 ** 3, "h2 Manusa przy 320");
+  blisko(wartosc("--naglowek-2", 1440, manus), 18 * 1.333 ** 3, "h2 Manusa przy 1440");
+});
+
+test("grubości kroju: trzy wejścia, domyślnie jak przed częścią 3, bez liczb w regułach", () => {
+  const zm = zmienne(CSS_SKALI);
+  assert.equal(zm["--grubosc-tekst"], "400");
+  assert.equal(zm["--grubosc-mocna"], "650");
+  assert.equal(zm["--grubosc-naglowki"], "650");
+  const baza = regulyWarstwy(CSS_SKALI, "base");
+  const body = baza.find((r) => r.selektor === "body");
+  assert.match(body.deklaracje, /font-weight:\s*var\(--grubosc-tekst\)/);
+  const mocne = regulyWarstwy(CSS_SKALI, "components").find((r) => /strong/.test(r.selektor));
+  assert.match(mocne.deklaracje, /font-weight:\s*var\(--grubosc-mocna\)/);
+  // Żadna reguła nie ma grubości wpisanej liczbą: krój z jedną grubością wystarczy ustawić w wejściach.
+  for (const r of [...baza, ...regulyWarstwy(CSS_SKALI, "components")]) {
+    assert.doesNotMatch(r.deklaracje, /font-weight:\s*\d/, r.selektor);
+  }
+});
+
+test("akcent: domyślnie równy marce, klasa i kolory w Tailwindzie", () => {
+  const zm = zmienne(CSS_SKALI);
+  const akcent = argumentyOklch(rozwin(zm["--kolor-akcent"], zm));
+  const marka = argumentyOklch(rozwin(zm["--kolor-marka"], zm));
+  assert.deepEqual(akcent, marka, "bez własnych liczb akcent = marka");
+  for (const klucz of ["--color-akcent", "--color-akcent-hover", "--color-na-akcencie"]) {
+    assert.match(MOTYW, new RegExp(`${klucz}:`), klucz);
+  }
+  const reguly = regulyWarstwy(CSS_SKALI, "components");
+  const [zwykly] = reguly.filter((r) => r.selektor === ".przycisk-akcent");
+  assert.match(zwykly.deklaracje, /background:\s*var\(--kolor-akcent\)/);
+  assert.match(zwykly.deklaracje, /color:\s*var\(--kolor-na-akcencie\)/);
+  const [najechany] = reguly.filter((r) => /^\.przycisk-akcent:hover/.test(r.selektor));
+  assert.match(najechany.deklaracje, /background:\s*var\(--kolor-akcent-hover\)/);
+  assert.doesNotMatch(zwykly.deklaracje + najechany.deklaracje, /border/, "bez kolorowego paska");
+  // Akcent Manusa (niebieski z logo) nie rusza marki.
+  const manus = { "--akcent-l": "0.443", "--akcent-c": "0.140", "--akcent-h": "261" };
+  const zmManus = zmienne(CSS_SKALI, manus);
+  assert.deepEqual(argumentyOklch(rozwin(zmManus["--kolor-marka"], zmManus)), marka);
+});
+
+const AKCENT = { hover: "--kolor-akcent-hover", zrodlo: "--kolor-akcent", przeciw: "--kolor-przeciw-akcentowi" };
+
+test("przycisk akcentu: napis czytelny na akcencie i po najechaniu, przy każdym akcencie", () => {
+  const naAkcencie = (podmiany) => naMarceDokladnie(podmiany, "--kolor-na-akcencie", "--kolor-akcent");
+  const slabeNapis = przemiatanieMarek((podmiany) => {
+    const zm = zmienne(CSS_SKALI, podmiany);
+    const yAkcentu = luminancja(argumentyOklch(rozwin(zm["--kolor-akcent"], zm)));
+    const yNapisu = naAkcencie(podmiany);
+    return (Math.max(yAkcentu, yNapisu) + 0.05) / (Math.min(yAkcentu, yNapisu) + 0.05);
+  }, "--akcent");
+  assert.deepEqual(slabeNapis, []);
+  const slabeHover = przemiatanieMarek((podmiany) => {
+    const yNapisu = naAkcencie(podmiany);
+    const yHover = luminancja(przyciskHoverDokladnie(podmiany, AKCENT));
+    return (Math.max(yHover, yNapisu) + 0.05) / (Math.min(yHover, yNapisu) + 0.05);
+  }, "--akcent");
+  assert.deepEqual(slabeHover, []);
+  // Najechanie odsuwa kolor od napisu: przeciw akcentowi to odwrotność napisu.
+  for (const l of ["0.2", "0.443", "0.6", "0.92"]) {
+    const podmiany = { "--akcent-l": l, "--akcent-c": "0.14", "--akcent-h": "261" };
+    assert.equal(naAkcencie(podmiany) + naMarceDokladnie(podmiany, "--kolor-przeciw-akcentowi", "--kolor-akcent"), 1, l);
+  }
+});
+
+test("przycisk akcentu: wersja zgrubna słaba tylko w pasie jasności 0,55–0,59, jak u marki", () => {
+  const slabe = przemiatanieMarek((podmiany) => kontrast("--kolor-na-akcencie", "--kolor-akcent", podmiany), "--akcent");
+  for (const wpis of slabe) {
+    const l = parseFloat(wpis.slice(2));
+    assert.ok(l >= 0.55 && l <= 0.59, wpis);
+    assert.ok(parseFloat(wpis.split(": ")[1]) >= 3.9, wpis);
+  }
+});
+
+test("dlaczego nie najechanie z makiety Manusa: zawsze przyciemnia i pod czarnym napisem osłabia kontrast", () => {
+  const slabe = przemiatanieMarek((podmiany) => {
+    const l = parseFloat(podmiany["--akcent-l"]);
+    const c = parseFloat(podmiany["--akcent-c"]);
+    const h = parseFloat(podmiany["--akcent-h"]);
+    const yHover = luminancja([Math.max(0.15, l - 0.08), c, h]); // wzór z makiety
+    const yNapisu = naMarceDokladnie(podmiany, "--kolor-na-akcencie", "--kolor-akcent");
+    return (Math.max(yHover, yNapisu) + 0.05) / (Math.min(yHover, yNapisu) + 0.05);
+  }, "--akcent");
+  assert.ok(slabe.length > 0, "sprawdzian powinien wskazać słabe akcenty dla wzoru z makiety");
+});
+
+const NEUTRALNE = [
+  "--kolor-tlo", "--kolor-tlo-inne", "--kolor-tekst", "--kolor-stonowany", "--kolor-obramowanie", "--kolor-obramowanie-mocne",
+];
+
+test("--odcien-szarosci: 1 = jak przed częścią 3, 0 = szarość bez odcienia, kontrast trzyma się zawsze", () => {
+  const zm = zmienne(CSS_SKALI);
+  assert.equal(zm["--odcien-szarosci"], "1");
+  const przedCzescia3 = { "--kolor-tlo": 0.003, "--kolor-tlo-inne": 0.006, "--kolor-tekst": 0.015, "--kolor-stonowany": 0.02, "--kolor-obramowanie": 0.012, "--kolor-obramowanie-mocne": 0.02 };
+  for (const nazwa of NEUTRALNE) {
+    const [, c1] = argumentyOklch(rozwin(zm[nazwa], zm));
+    blisko(c1, przedCzescia3[nazwa], `${nazwa} przy 1`);
+    const zm0 = zmienne(CSS_SKALI, { "--odcien-szarosci": "0" });
+    const [, c0] = argumentyOklch(rozwin(zm0[nazwa], zm0));
+    assert.equal(c0, 0, `${nazwa} przy 0 bez odcienia`);
+    const zm35 = zmienne(CSS_SKALI, { "--odcien-szarosci": "0.35" });
+    const [, c35] = argumentyOklch(rozwin(zm35[nazwa], zm35));
+    assert.ok(Math.abs(c35 - przedCzescia3[nazwa] * 0.35) < 1e-9, `${nazwa} przy 0,35`);
+  }
+  // Cień idzie za tekstem (te same składowe, więc też bez odcienia przy 0).
+  for (const s of ["s", "m", "l"]) krycieCienia(`--cien-kolor-${s}`, { "--odcien-szarosci": "0" });
+  // Kontrast ról przy każdym ustawieniu i każdej marce.
+  for (const odcien of ["0", "0.35", "1"]) {
+    for (const [nazwa, marka] of Object.entries(MARKI)) {
+      for (const [a, b, prog] of PARY) {
+        const k = kontrast(a, b, { ...marka, "--odcien-szarosci": odcien });
+        assert.ok(k >= prog, `odcień ${odcien}, ${nazwa}: ${a} na ${b} = ${k.toFixed(2)}`);
+      }
+    }
+  }
+  // Kolory marki odcienia szarości nie słuchają.
+  const zm0 = zmienne(CSS_SKALI, { "--odcien-szarosci": "0" });
+  assert.deepEqual(argumentyOklch(rozwin(zm0["--kolor-marka"], zm0)), argumentyOklch(rozwin(zm["--kolor-marka"], zm)));
+});
+
+// ---------- Warstwy (@layer) ----------
+
+// Kaskada z warstwami, jak w przeglądarce (deklaracje bez !important): najpierw warstwa
+// (reguła spoza warstw > utilities > components > base), potem swoistość, potem kolejność.
+// Element nie ma przodków, więc selektory z kombinatorem (spacja, >, +, ~) go nie dotyczą.
+const RANGA_WARSTWY = { base: 1, components: 2, utilities: 3, brak: 4 };
+
+function kaskada(el, wlasnosc, regulyStrony) {
+  const wszystkie = [
+    ...regulyWarstwy(CSS_SKALI, "base").map((r) => ({ ...r, warstwa: "base" })),
+    ...regulyWarstwy(CSS_SKALI, "components").map((r) => ({ ...r, warstwa: "components" })),
+    ...regulyStrony,
+  ];
+  let najlepsza = null;
+  wszystkie.forEach((r, kolejnosc) => {
+    const re = new RegExp(`(?:^|;)\\s*${wlasnosc}\\s*:\\s*([^;]+)`, "g");
+    const deklaracje = [...r.deklaracje.matchAll(re)];
+    if (deklaracje.length === 0) return;
+    for (const s of podziel(r.selektor)) {
+      if (/[\s>+~]/.test(s) || !pasuje(s, el)) continue;
+      const k = { ranga: RANGA_WARSTWY[r.warstwa], swoistosc: swoistosc(s), kolejnosc, wartosc: deklaracje.at(-1)[1].trim(), r };
+      const roznica = !najlepsza ? 1 : k.ranga - najlepsza.ranga || porownajSwoistosc(k.swoistosc, najlepsza.swoistosc) || 1;
+      if (roznica > 0) najlepsza = k;
+    }
+  });
+  return najlepsza;
+}
+
+const LINK_JAKO_PRZYCISK = { znacznik: "a", klasy: ["przycisk"], atrybuty: {}, stany: [] };
+
+test("warstwy: reguła strony spoza warstw zabiera napis z przycisku, w @layer base już nie", () => {
+  // Bez reguł strony napis bierze kolor z przycisku.
+  assert.match(kaskada(LINK_JAKO_PRZYCISK, "color", []).wartosc, /var\(--kolor-na-marce\)/);
+  // Zerowanie luzem (jak w makiecie przed poprawką): wygrywa mimo mniejszej swoistości.
+  const luzem = { warstwa: "brak", selektor: "a", deklaracje: " color: inherit; " };
+  assert.ok(porownajSwoistosc(swoistosc("a"), swoistosc(".przycisk")) < 0, "a ma mniejszą swoistość niż .przycisk");
+  assert.equal(kaskada(LINK_JAKO_PRZYCISK, "color", [luzem]).wartosc, "inherit", "luzem: napis znika");
+  // Większa swoistość też nie pomaga: liczy się warstwa.
+  const mocniej = { warstwa: "brak", selektor: "a:not(.x)", deklaracje: " color: inherit; " };
+  assert.equal(kaskada(LINK_JAKO_PRZYCISK, "color", [mocniej]).wartosc, "inherit");
+  // Ta sama reguła w @layer base: przycisk wygrywa.
+  const wWarstwie = { ...luzem, warstwa: "base" };
+  assert.match(kaskada(LINK_JAKO_PRZYCISK, "color", [wWarstwie]).wartosc, /var\(--kolor-na-marce\)/);
+  // Tak samo tło, akcent i pole.
+  const tlo = { warstwa: "base", selektor: "a", deklaracje: " background: none; " };
+  assert.match(kaskada(LINK_JAKO_PRZYCISK, "background", [tlo]).wartosc, /var\(--kolor-marka\)/);
+  const akcent = { ...LINK_JAKO_PRZYCISK, klasy: ["przycisk-akcent"] };
+  assert.match(kaskada(akcent, "color", [wWarstwie]).wartosc, /var\(--kolor-na-akcencie\)/);
+  const pole = { znacznik: "input", klasy: ["pole"], atrybuty: {}, stany: [] };
+  assert.match(kaskada(pole, "border", [{ warstwa: "base", selektor: "input", deklaracje: " border: 0; " }]).wartosc, /var\(--pole-obramowanie\)/);
+  assert.equal(kaskada(pole, "border", [{ warstwa: "brak", selektor: "input", deklaracje: " border: 0; " }]).wartosc, "0");
+});
+
+test("warstwy: strażnik łapie reguły bazowe strony poza @layer", () => {
+  const css = [
+    "a { color: inherit; }", // 1: naruszenie
+    "@layer base {",
+    "  a { text-decoration: none; }",
+    "  @media (min-width: 900px) { h1 { letter-spacing: 0; } }",
+    "}",
+    ":root { --wlasny-kolor: var(--kolor-marka); }", // same zmienne: w porządku
+    ".karta a { color: var(--kolor-marka-tekst); }", // z klasą: świadomy styl, w porządku
+    "@media (min-width: 900px) {",
+    "  ul,", // 9: naruszenie (selektor na dwie linie, część bez klasy)
+    "  .lista { margin: 0; }",
+    "}",
+    "@font-face { font-family: Kroj; src: url(/k.woff2); }",
+    "@keyframes wjazd { from { opacity: 0; } to { opacity: 1; } }",
+    "*, ::before { box-sizing: border-box; }", // 14: naruszenie
+    "img { display: block; } /* skala-ok: zdjęcia w tym projekcie zawsze blokowe */",
+    "@supports (display: grid) { @layer base { main { display: grid; } } }",
+    "@layer components { .moja { color: var(--kolor-tekst); } }",
+    "html {", // 18: naruszenie, deklaracja w następnej linii
+    "  scroll-behavior: smooth;",
+    "}",
+  ].join("\n");
+  for (const plik of ["app/globals.css", "app/strona.module.css"]) {
+    const warstwy = sprawdzPlik(plik, css).filter((n) => n.co.endsWith("poza @layer"));
+    assert.deepEqual(warstwy.map((n) => n.linia), [1, 9, 14, 18], plik);
+    assert.match(warstwy[0].rada, /@layer base/);
+    assert.match(warstwy[0].co, /^a poza @layer$/);
+  }
+  // Blok <style> w .astro też.
+  const astro = ["---", "---", "<a class=\"przycisk\">x</a>", "<style>", "  a { color: inherit; }", "</style>"].join("\n");
+  assert.deepEqual(sprawdzPlik("src/x.astro", astro).map((n) => n.linia), [5]);
+});
+
+test("warstwy: Skala sama trzyma reguły w warstwach, szablon czysty", () => {
+  // Plik skali strażnik pomija przy skanowaniu, więc sprawdzamy go tu wprost.
+  const warstwy = sprawdzPlik("app/inna.css", CSS_SKALI).filter((n) => n.co.endsWith("poza @layer"));
+  assert.deepEqual(warstwy, []);
+  const globalny = readFileSync(join(KORZEN, "app", "globals.css"), "utf8");
+  assert.deepEqual(sprawdzPlik("app/globals.css", globalny), []);
+  // Przykład z komentarza w globals.css (po zdjęciu komentarza) też przechodzi.
+  const przyklad = /(@layer base \{[\s\S]*?\n {3}\})/.exec(globalny);
+  assert.ok(przyklad, "brak przykładu @layer base w globals.css");
+  assert.deepEqual(sprawdzPlik("app/x.css", przyklad[1]), []);
+});
+
+// ---------- Strażnik: nowe stopnie i kolory ----------
+
+test("strażnik zna tytuł, akcent i granicę małego tekstu", () => {
+  for (const klasa of ["text-tytul", "md:text-tytul", "bg-akcent", "text-na-akcencie", "hover:bg-akcent-hover", "border-akcent", "text-blad"]) {
+    assert.equal(sprawdzKlase(klasa), null, `nie powinno łapać ${klasa}`);
+  }
+  assert.match(sprawdzKlase("text-[13px]"), /text-s\b.*15 px/);
+  assert.match(sprawdzKlase("text-[12px]"), /--tekst-min/);
+  assert.match(sprawdzKlase("text-[80px]"), /text-tytul/);
+  assert.match(sprawdzKlase("text-[40px]"), /text-xxl/);
+  assert.match(sprawdzKlase("text-[18px]"), /text-m\b/);
+  assert.match(sprawdzKlase("bg-[#abc]"), /akcent/);
 });
