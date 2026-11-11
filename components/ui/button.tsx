@@ -1,24 +1,23 @@
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "light" | "ghost";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
 }
 
+// Wygląd przycisków mieszka w app/skala.css (.przycisk, .przycisk-drugi, .przycisk-jasny,
+// .przycisk-cichy), żeby te same klasy działały bez Reacta, np. przy CSS modules albo na <a>.
 const variantClass: Record<Variant, string> = {
-  primary: "bg-marka text-na-marce hover:bg-marka-hover",
-  secondary: "border border-obramowanie hover:bg-marka-blady",
-  ghost: "hover:bg-marka-blady",
+  primary: "przycisk",
+  secondary: "przycisk-drugi",
+  light: "przycisk-jasny",
+  ghost: "przycisk-cichy",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = "primary", className = "", children, ...props }, ref) => (
-    <button
-      ref={ref}
-      className={`inline-flex items-center justify-center rounded-md px-s py-xs text-s font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${variantClass[variant]} ${className}`}
-      {...props}
-    >
+    <button ref={ref} className={`${variantClass[variant]} ${className}`} {...props}>
       {children}
     </button>
   ),

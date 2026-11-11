@@ -16,9 +16,14 @@ Skeleton Next.js 16 + Tailwind v4 + Supabase + Sentry dla ścieżki **site-build
 
 ---
 
-## Skala strony (odstępy, tekst, kolory)
+## Skala strony (odstępy, tekst, kolory, kształty)
 
-**Przy starcie strony ustaw własne wartości wejściowe** (baza odstępów, skoki, kolor marki, kroje).
+### Skala (framework stron)
+
+Zasada wzięta z Automatic CSS: kilka liczb na górze `app/skala.css` wylicza całą resztę, a w komponentach
+nie ma ani jednej wartości wpisanej z ręki.
+
+**Przy starcie strony ustaw własne wartości wejściowe** (baza odstępów, skoki, kolor marki, kroje, zaokrąglenie, cień).
 Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak siostry.
 
 - **Gdzie zmienić liczby:** `app/skala.css`, blok `WEJŚCIA` na górze. Reszta wylicza się sama
@@ -36,12 +41,49 @@ Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak s
 - **Rytm tekstu:** klasa `tresc` na rodzicu i wklejony tekst (akapity, nagłówki, listy, cytaty, linki)
   od razu ma porządne odstępy i szerokość wiersza.
 - **Szerokości:** `max-w-miara` (wygodny wiersz tekstu), `max-w-strona` (cała treść).
+- **Zaokrąglenia:** jedno wejście `--baza-zaokr` (domyślnie 4 px = stopień m). Klasy `rounded-s`, `rounded-m`,
+  `rounded-l`, `rounded-pelne` (pigułka); w CSS `var(--zaokr-m)` i pokrewne. Baza 0 = wszystko kanciaste.
+  Skromnie: bez łuków w tle i ramek w kształcie łuku. Na koło dalej `rounded-full`.
+  Domyślne `rounded`, `rounded-lg`, `rounded-[8px]` są wyłączone.
+- **Linia:** jedno wejście `--grubosc-linii` (1 px). Klasa `border-linia`, w CSS `var(--linia)`.
+  Mocniejsze obramowanie, które musi być widać (pola): `border-obramowanie-mocne`.
+- **Cienie:** jedno wejście `--sila-cienia` (0 = bez cieni, 1 = delikatny, 2 = wyraźny). Klasy `shadow-s`,
+  `shadow-m`, `shadow-l`, w CSS `var(--cien-m)`. Kolor cienia bierze się z koloru tekstu.
+  Domyślne `shadow`, `shadow-md`, `drop-shadow-*` są wyłączone.
+- **Przyciski:** wejścia `--przycisk-wysokosc` (nigdy mniej niż 44 px), `--przycisk-wciecie` (stopień odstępu),
+  `--przycisk-kroj`, `--przycisk-zaokr`, `--przycisk-litery`. Gotowe klasy (zwykły CSS, działają też
+  przy CSS modules i na `<a>`): `przycisk` (kolor marki), `przycisk-drugi` (obrys), `przycisk-jasny`
+  (na ciemnym tle lub zdjęciu), `przycisk-cichy` (bez tła i obrysu, tło po najechaniu). Wszystkie mają tę samą
+  wysokość, krój i wielkość napisu. Stany: najechanie, widoczny obrys z klawiatury, wyłączony.
+  Po najechaniu przycisk marki odsuwa się od koloru napisu, więc kontrast tylko rośnie.
+- **Pola formularza:** wejścia `--pole-wysokosc`, `--pole-wciecie`, `--pole-obramowanie`, `--pole-zaokr`,
+  `--pole-fokus` (kolor obramowania po kliknięciu, z koloru marki). Klasa `pole` na `input`, `textarea`, `select`.
+
+- **Błąd w polu:** `aria-invalid="true"` na polu (albo klasa `pole-blad`) daje ramkę w kolorze błędu
+  w każdym stanie, także po najechaniu i przy obrysie z klawiatury. Komunikat pod polem: klasa `pole-komunikat`
+  (kolor błędu, tekst stopnia s), połączony z polem przez `aria-describedby`, żeby czytnik ekranu go przeczytał.
+  Kolor roli `--kolor-blad` (klasy `text-blad`, `border-blad`) to czerwień niezależna od marki,
+  co najmniej 4,5:1 do obu teł.
+
+  ```tsx
+  <a href="/kontakt" className="przycisk">Umów rozmowę</a>
+  <button type="button" className="przycisk-drugi">Więcej</button>
+
+  <label htmlFor="email">Adres e-mail</label>
+  <input id="email" type="email" className="pole" placeholder="adres@przyklad.pl" />
+
+  <label htmlFor="telefon">Telefon</label>
+  <input id="telefon" type="tel" className="pole" aria-invalid="true" aria-describedby="telefon-blad" />
+  <p id="telefon-blad" className="pole-komunikat">Wpisz 9 cyfr, np. 600 123 456.</p>
+  ```
 - **Strażnik:** `npm run skala` (jest też w `npm run lint`) wyłapuje liczby wpisane z ręki:
-  `py-16`, `p-[37px]`, `text-2xl`, `bg-zinc-50`, `bg-[#abc]`, `dark:`, `padding: 16px` w CSS,
-  `style={{ padding: 16 }}`. Podaje plik, linię i stopień do użycia.
+  `py-16`, `p-[37px]`, `text-2xl`, `bg-zinc-50`, `bg-[#abc]`, `dark:`, `rounded-lg`, `rounded-[8px]`,
+  `shadow-md`, `shadow-[…]`, `border-2`, `padding: 16px`, `border-radius: 8px` i `box-shadow: 0 4px …` w CSS
+  (także `*.module.css`), `style={{ padding: 16, borderRadius: 8 }}`. Podaje plik, linię i stopień do użycia.
   **Świadomy wyjątek:** w tej samej linii komentarz `skala-ok: <powód>`,
   np. `{/* skala-ok: baner partnera ma stałą wysokość */}`.
-- **Testy:** `npm test` (strażnik w obie strony, liczby skali przy 320 i 1440 px, kontrast kolorów).
+- **Testy:** `npm test` (strażnik w obie strony, liczby skali i kształtów przy 320 i 1440 px, kontrast kolorów,
+  przycisków i pól).
 
 ---
 

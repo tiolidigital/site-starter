@@ -65,7 +65,88 @@ test("strażnik w .tsx czyta klasy, a nie zwykły tekst", () => {
     'const warianty = { duzy: "px-8 text-tekst" };', // 9: naruszenie
   ].join("\n");
   const wynik = sprawdzPlik("app/x.tsx", kod).map((n) => `${n.linia}:${n.co}`).sort();
-  assert.deepEqual(wynik, ["2:py-16", "5:p-6", "5:text-sm", "6:color: \"#fff\"", "6:padding: 16", "9:px-8"].sort());
+  // Gołe „rounded” od części 2 też jest naruszeniem (domyślne zaokrąglenie Tailwinda wyłączone).
+  assert.deepEqual(wynik, ["2:py-16", "5:p-6", "5:rounded", "5:text-sm", "6:color: \"#fff\"", "6:padding: 16", "9:px-8"].sort());
+});
+
+// ---------- Strażnik: kształty (zaokrąglenia, cienie, linie) ----------
+
+test("strażnik łapie zaokrąglenia, cienie i grubości spoza skali", () => {
+  for (const klasa of [
+    "rounded", "rounded-lg", "rounded-md", "rounded-sm", "rounded-xl", "rounded-2xl", "rounded-[8px]", "rounded-[0.5rem]",
+    "rounded-t-lg", "rounded-tl-[6px]", "rounded-t", "md:rounded-lg", "hover:rounded-[12px]",
+    "shadow", "shadow-md", "shadow-sm", "shadow-xl", "shadow-inner", "shadow-[0_1px_2px_rgba(0,0,0,0.1)]",
+    "shadow-[0_4px_10px_#000]", "drop-shadow-md", "inset-shadow-sm", "text-shadow-lg", "hover:shadow-lg",
+    "border-2", "border-x-4", "border-[3px]", "border-t-[0.5px]",
+  ]) {
+    assert.ok(sprawdzKlase(klasa), `powinno złapać ${klasa}`);
+  }
+});
+
+test("strażnik przepuszcza stopnie kształtów", () => {
+  for (const klasa of [
+    "rounded-s", "rounded-m", "rounded-l", "rounded-pelne", "rounded-full", "rounded-none", "rounded-t-m",
+    "rounded-s-m", "rounded-tl-l", "rounded-[50%]", "rounded-[var(--zaokr-m)]", "md:rounded-l",
+    "shadow-s", "shadow-m", "shadow-l", "shadow-none", "hover:shadow-l", "shadow-marka", "shadow-tekst/10",
+    "drop-shadow-none", "border", "border-0", "border-linia", "border-x-linia", "border-obramowanie",
+    "border-obramowanie-mocne", "border-[var(--linia)]", "border-spacing-0",
+  ]) {
+    assert.equal(sprawdzKlase(klasa), null, `nie powinno łapać ${klasa}`);
+  }
+});
+
+test("strażnik podpowiada stopień kształtu", () => {
+  assert.match(sprawdzKlase("rounded-lg"), /rounded-l\b/);
+  assert.match(sprawdzKlase("rounded-md"), /rounded-m\b/);
+  assert.match(sprawdzKlase("rounded-[5px]"), /rounded-m\b/);
+  assert.match(sprawdzKlase("rounded-[9999px]"), /rounded-pelne/);
+  assert.match(sprawdzKlase("rounded-t-lg"), /rounded-t-l\b/);
+  assert.match(sprawdzKlase("shadow-md"), /shadow-m\b/);
+  assert.match(sprawdzKlase("shadow-2xl"), /shadow-l\b/);
+  assert.match(sprawdzKlase("shadow-[0_1px_2px_#000]"), /shadow-s, shadow-m albo shadow-l/);
+  assert.match(sprawdzKlase("border-2"), /border-linia/);
+  // Sam kolor cienia w nawiasie to sprawa kolorów, nie cienia.
+  assert.match(sprawdzKlase("shadow-[#abc]"), /bg-tlo/);
+});
+
+test("strażnik łapie kształty w .css, .module.css i style={{}}", () => {
+  const css = [
+    ".a { border-radius: 8px; }", // 1
+    ".b { border-radius: var(--zaokr-m); }",
+    ".c { border-top-left-radius: 0.5rem; }", // 3
+    ".d { border-radius: 50%; }",
+    ".e { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }", // 5
+    ".f { box-shadow: var(--cien-m); }",
+    ".g { box-shadow: none; }",
+    ".h { box-shadow: 0 0 0 var(--linia) var(--kolor-marka); }",
+    ".i { text-shadow: 0 1px 2px var(--kolor-tekst); }", // 9
+    ".j { border-radius: 9999px; }", // 10
+    ".k { @apply rounded-lg shadow-m; }", // 11
+    ".l { border-radius: 0; }",
+  ].join("\n");
+  for (const plik of ["app/x.css", "app/karta.module.css"]) {
+    const wynik = sprawdzPlik(plik, css);
+    assert.deepEqual(wynik.map((n) => n.linia), [1, 3, 5, 9, 10, 11], plik);
+    assert.match(wynik[0].rada, /var\(--zaokr-l\)/);
+    assert.match(wynik[2].rada, /var\(--cien-s\)/);
+    assert.match(wynik[4].rada, /var\(--zaokr-pelne\)/);
+  }
+
+  const tsx = [
+    "export const A = () => (",
+    '  <div style={{ borderRadius: 8, boxShadow: "0 1px 2px #000" }} />', // 2: dwa
+    '  <div style={{ borderTopLeftRadius: "6px", borderRadius: "50%", boxShadow: "var(--cien-m)" }} />', // 3: jedno
+    '  <div style={{ borderRadius: promien, boxShadow: "none" }} />',
+    ");",
+  ].join("\n");
+  const wynik = sprawdzPlik("app/x.tsx", tsx).map((n) => `${n.linia}:${n.co.split(":")[0]}`).sort();
+  assert.deepEqual(wynik, ["2:borderRadius", "2:boxShadow", "3:borderTopLeftRadius"]);
+});
+
+test("wyjątek skala-ok działa też dla kształtów", () => {
+  assert.equal(sprawdzPlik("a.tsx", '<i className="rounded-[3px]" /> {/* skala-ok: ikona partnera */}').length, 0);
+  assert.equal(sprawdzPlik("a.css", ".a { box-shadow: 0 0 9px red; } /* skala-ok: poświata logo */").length, 0);
+  assert.equal(sprawdzPlik("a.css", ".a { border-radius: 3px; } /* skala-ok: */").length, 1);
 });
 
 test("strażnik w .css łapie liczby w odstępach, czcionkach i kolorach", () => {
@@ -315,6 +396,14 @@ const PARY = [
   ["--kolor-marka-tekst", "--kolor-marka-blady", 4.5],
   ["--kolor-na-marce", "--kolor-marka", 4.5],
   ["--kolor-tekst", "--kolor-marka-jasny", 4.5],
+  // Przycisk jasny po najechaniu, przycisk drugi (obrys i napis w kolorze marki-tekst).
+  ["--kolor-tekst", "--kolor-marka-blady", 4.5],
+  // Obramowanie pola musi być widać (WCAG 1.4.11: co najmniej 3:1), także na innym tle.
+  ["--kolor-obramowanie-mocne", "--kolor-tlo", 3],
+  ["--kolor-obramowanie-mocne", "--kolor-tlo-inne", 3],
+  // Komunikat błędu pod polem (tekst) i ramka pola z błędem.
+  ["--kolor-blad", "--kolor-tlo", 4.5],
+  ["--kolor-blad", "--kolor-tlo-inne", 4.5],
 ];
 
 test("kontrast ról: domyślna marka i skrajne", (t) => {
@@ -328,10 +417,14 @@ test("kontrast ról: domyślna marka i skrajne", (t) => {
 });
 
 // Dokładna wersja z @supports: kanały r, g, b liniowego sRGB podstawione do wzoru z CSS.
-function naMarceDokladnie(podmiany) {
+function naMarceDokladnie(podmiany, nazwa = "--kolor-na-marce") {
   const zm = zmienne(CSS_SKALI, podmiany);
-  const blok = /@supports[^{]*\{\s*:root\s*\{\s*--kolor-na-marce:\s*color\(\s*from var\(--kolor-marka\) srgb-linear([\s\S]*?)\);/.exec(CSS_SKALI);
-  assert.ok(blok, "brak dokładnej wersji --kolor-na-marce w @supports");
+  const supports = /@supports[^{]*\{\s*:root\s*\{([\s\S]*?)\n {2}\}\n\}/.exec(CSS_SKALI);
+  assert.ok(supports, "brak bloku @supports z dokładnymi kolorami");
+  const blok = new RegExp(`${nazwa}:\\s*color\\(\\s*from var\\(--kolor-marka\\) srgb-linear([\\s\\S]*?)\\);`).exec(
+    supports[1].replace(/\/\*[\s\S]*?\*\//g, ""),
+  );
+  assert.ok(blok, `brak dokładnej wersji ${nazwa} w @supports`);
   const [L, C, h] = argumentyOklch(rozwin(zm["--kolor-marka"], zm));
   const [r, g, b] = liniowyRgb(L, C, h);
   const kanaly = blok[1].trim().split(/\n\s*/);
@@ -376,11 +469,19 @@ test("wersja zgrubna (stare przeglądarki) słaba tylko w wąskim pasie jasnośc
 
 // ---------- Nagłówki kontra reset Tailwinda ----------
 
-// Reguły najwyższego poziomu z bloku @layer <nazwa> { … } (selektor + deklaracje).
+// Reguły najwyższego poziomu ze wszystkich bloków @layer <nazwa> { … } (selektor + deklaracje).
 function regulyWarstwy(css, warstwa) {
   const bez = css.replace(/\/\*[\s\S]*?\*\//g, "");
-  const start = bez.indexOf(`@layer ${warstwa} {`);
-  assert.ok(start >= 0, `brak @layer ${warstwa}`);
+  const znacznik = `@layer ${warstwa} {`;
+  assert.ok(bez.includes(znacznik), `brak @layer ${warstwa}`);
+  const reguly = [];
+  for (let start = bez.indexOf(znacznik); start >= 0; start = bez.indexOf(znacznik, start + 1)) {
+    reguly.push(...regulyBloku(bez, start));
+  }
+  return reguly;
+}
+
+function regulyBloku(bez, start) {
   let glebokosc = 1;
   let bufor = "";
   const reguly = [];
@@ -448,4 +549,356 @@ test("cytat bez kolorowego paska z boku", () => {
   const cytat = regulyWarstwy(CSS_SKALI, "components").filter((r) => /blockquote/.test(r.selektor));
   assert.ok(cytat.length > 0, "brak stylu cytatu");
   for (const r of cytat) assert.doesNotMatch(r.deklaracje, /border/, r.selektor);
+});
+
+// ---------- Kształty: zaokrąglenia, linia, cienie, przycisk, pole ----------
+
+test("kształty na krańcach: telefon 320 px i komputer 1440 px", () => {
+  const oczekiwane = {
+    "--zaokr-s": [2, 2],
+    "--zaokr-m": [4, 4],
+    "--zaokr-l": [8, 8],
+    "--zaokr-pelne": [9999, 9999],
+    "--linia": [1, 1],
+    "--przycisk-h": [48, 48],
+    "--pole-h": [48, 48],
+    "--przycisk-zaokr": [4, 4],
+    "--pole-zaokr": [4, 4],
+    // Wcięcia to stopnie odstępów, więc płyną razem z nimi.
+    "--przycisk-wciecie": [24, 30],
+    "--pole-wciecie": [24 / 1.333, 20],
+  };
+  for (const [nazwa, [tel, pc]] of Object.entries(oczekiwane)) {
+    blisko(wartosc(nazwa, 320), tel, `${nazwa} przy 320`);
+    blisko(wartosc(nazwa, 1440), pc, `${nazwa} przy 1440`);
+  }
+});
+
+test("zmiana samej bazy zaokrąglenia zmienia wszystkie stopnie, przycisk i pole", () => {
+  const podmiany = { "--baza-zaokr": "6" };
+  for (const [nazwa, oczekiwana] of [
+    ["--zaokr-s", 3], ["--zaokr-m", 6], ["--zaokr-l", 12], ["--przycisk-zaokr", 6], ["--pole-zaokr", 6],
+  ]) {
+    blisko(wartosc(nazwa, 320, podmiany), oczekiwana, `${nazwa} przy 320`);
+    blisko(wartosc(nazwa, 1440, podmiany), oczekiwana, `${nazwa} przy 1440`);
+  }
+  // Zero = kanciaste wszystko, łącznie z pigułką.
+  for (const nazwa of ["--zaokr-s", "--zaokr-m", "--zaokr-l", "--zaokr-pelne", "--przycisk-zaokr"]) {
+    blisko(wartosc(nazwa, 1440, { "--baza-zaokr": "0" }), 0, `${nazwa} przy zerowej bazie`);
+  }
+  // Odstępy i tekst zostają bez zmian.
+  blisko(wartosc("--odstep-m", 1440, podmiany), 30, "--odstep-m");
+  blisko(wartosc("--tekst-m", 1440, podmiany), 18, "--tekst-m");
+});
+
+test("grubość linii z jednego wejścia", () => {
+  blisko(wartosc("--linia", 1440, { "--grubosc-linii": "2" }), 2, "--linia przy grubości 2");
+});
+
+test("przycisk i pole nigdy niższe niż 44 px (dotyk)", () => {
+  const niskie = { "--przycisk-wysokosc": "30", "--pole-wysokosc": "36" };
+  for (const szerokosc of [280, 320, 768, 1440]) {
+    blisko(wartosc("--przycisk-h", szerokosc, niskie), 44, `--przycisk-h przy ${szerokosc}`);
+    blisko(wartosc("--pole-h", szerokosc, niskie), 44, `--pole-h przy ${szerokosc}`);
+  }
+  blisko(wartosc("--przycisk-h", 1440, { "--przycisk-wysokosc": "56" }), 56, "wyższy przycisk");
+});
+
+// Udział koloru tekstu w kolorze cienia (procent krycia), policzony ze wzoru w CSS.
+function krycieCienia(nazwa, podmiany) {
+  const zm = zmienne(CSS_SKALI, podmiany);
+  const m = /^oklch\((.+) \/ min\(1, calc\(var\(--sila-cienia\) \* (\d*\.?\d+)\)\)\)$/.exec(zm[nazwa]);
+  assert.ok(m, `${nazwa}: kolor z przezroczystością z siły cienia`);
+  // Te same składowe co kolor tekstu (cień w odcieniu tekstu, więc i marki).
+  assert.equal(`oklch(${m[1]})`, zm["--kolor-tekst"], `${nazwa} z koloru tekstu`);
+  return Math.round(Math.min(1, policz(zm["--sila-cienia"], 1440) * parseFloat(m[2])) * 1000) / 10;
+}
+
+// Największe rozmycie (trzecia długość warstwy) w cieniu.
+function rozmycie(nazwa) {
+  const zm = zmienne(CSS_SKALI);
+  return Math.max(...zm[nazwa].split(/,(?![^(]*\))/).map((w) => parseFloat(w.trim().split(/\s+/)[2])));
+}
+
+test("cienie: kolor z tekstu, delikatne, siła 0 wyłącza, stopnie rosną", () => {
+  for (const s of ["s", "m", "l"]) {
+    const krycie = krycieCienia(`--cien-kolor-${s}`);
+    assert.ok(krycie > 0 && krycie <= 12, `--cien-kolor-${s}: ${krycie}% (delikatny)`);
+    assert.equal(krycieCienia(`--cien-kolor-${s}`, { "--sila-cienia": "0" }), 0, `siła 0 dla ${s}`);
+    assert.equal(krycieCienia(`--cien-kolor-${s}`, { "--sila-cienia": "50" }), 100, `krycie nie wychodzi ponad 100%`);
+  }
+  assert.ok(krycieCienia("--cien-kolor-m", { "--sila-cienia": "2" }) > krycieCienia("--cien-kolor-m"), "większa siła, mocniejszy cień");
+  assert.ok(rozmycie("--cien-s") < rozmycie("--cien-m") && rozmycie("--cien-m") < rozmycie("--cien-l"), "s < m < l");
+});
+
+test("Tailwind dostaje kształty, a domyślne zaokrąglenia i cienie są wyłączone", () => {
+  const motyw = /@theme inline\s*\{([\s\S]*?)\n\}/.exec(CSS_SKALI)[1];
+  for (const klucz of [
+    "--radius-s", "--radius-m", "--radius-l", "--radius-pelne", "--shadow-s", "--shadow-m", "--shadow-l",
+    "--border-width-linia", "--color-obramowanie-mocne",
+  ]) {
+    assert.match(motyw, new RegExp(`${klucz}:`), klucz);
+  }
+  for (const wylaczone of ["--radius-\\*", "--shadow-\\*", "--inset-shadow-\\*", "--drop-shadow-\\*", "--text-shadow-\\*"]) {
+    assert.match(motyw, new RegExp(`${wylaczone}: initial;`), wylaczone);
+  }
+});
+
+// Kolor przycisku po najechaniu (color-mix w OKLab z kolorem „przeciw marce”), wersja dokładna.
+function przyciskHoverDokladnie(podmiany) {
+  const zm = zmienne(CSS_SKALI, podmiany);
+  const mix = /^color-mix\(in oklab, var\(--kolor-marka\) (\d+)%, var\(--kolor-przeciw-marce\)\)$/.exec(zm["--przycisk-hover"]);
+  assert.ok(mix, "--przycisk-hover: mieszanka marki z kolorem przeciw marce");
+  const u = parseFloat(mix[1]) / 100;
+  const [L, C, h] = argumentyOklch(rozwin(zm["--kolor-marka"], zm));
+  // Przeciw marce to szary o liniowej wartości 0 albo 1, czyli w OKLab L = 0 albo 1, bez nasycenia.
+  const przeciw = naMarceDokladnie(podmiany, "--kolor-przeciw-marce");
+  return [u * L + (1 - u) * Math.cbrt(przeciw), u * C, h];
+}
+
+test("przycisk główny: napis czytelny na marce i po najechaniu, przy każdej marce", () => {
+  const slabe = przemiatanieMarek((podmiany) => {
+    const yNapisu = naMarceDokladnie(podmiany);
+    const yHover = luminancja(przyciskHoverDokladnie(podmiany));
+    return (Math.max(yHover, yNapisu) + 0.05) / (Math.min(yHover, yNapisu) + 0.05);
+  });
+  assert.deepEqual(slabe, []);
+  // Najechanie zawsze odsuwa kolor od napisu: przeciw marce jest odwrotnością napisu.
+  for (const podmiany of Object.values(MARKI)) {
+    assert.equal(naMarceDokladnie(podmiany) + naMarceDokladnie(podmiany, "--kolor-przeciw-marce"), 1);
+  }
+});
+
+test("dlaczego nie --kolor-marka-hover: zawsze ciemnieje i pod czarnym napisem osłabia kontrast", () => {
+  const slabe = przemiatanieMarek((podmiany) => {
+    const zm = zmienne(CSS_SKALI, podmiany);
+    const yHover = luminancja(argumentyOklch(rozwin(zm["--kolor-marka-hover"], zm)));
+    const yNapisu = naMarceDokladnie(podmiany);
+    return (Math.max(yHover, yNapisu) + 0.05) / (Math.min(yHover, yNapisu) + 0.05);
+  });
+  assert.ok(slabe.length > 0, "sprawdzian powinien wskazać słabe marki dla starego wzoru");
+});
+
+test("składniki: przyciski i pole ze stanami, na zmiennych skali", () => {
+  const reguly = regulyWarstwy(CSS_SKALI, "components");
+  const znajdz = (wzor) => reguly.filter((r) => wzor.test(r.selektor));
+  for (const klasa of ["przycisk", "przycisk-drugi", "przycisk-jasny", "przycisk-cichy", "pole"]) {
+    assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])`)).length > 0, `brak .${klasa}`);
+    assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])[^,]*:hover`)).length > 0, `brak stanu hover dla .${klasa}`);
+    assert.ok(znajdz(new RegExp(`\\.${klasa}(?![\\w-])[^,]*:disabled`)).length > 0, `brak stanu disabled dla .${klasa}`);
+  }
+  const fokusPola = znajdz(/\.pole:focus-visible/);
+  assert.ok(fokusPola.length > 0 && /outline:/.test(fokusPola[0].deklaracje), "pole ma widoczny obrys przy fokusie");
+  assert.match(fokusPola[0].deklaracje, /var\(--pole-fokus\)/);
+  // Żadnych pikseli wpisanych z ręki w składnikach: wszystko ze zmiennych skali.
+  for (const r of znajdz(/\.(przycisk|pole)/)) {
+    assert.doesNotMatch(r.deklaracje, /\d\s*px/, r.selektor);
+    assert.doesNotMatch(r.deklaracje, /#[0-9a-f]{3,8}\b|oklch\(|rgb\(/i, r.selektor);
+  }
+  const [przycisk] = znajdz(/^\.przycisk,/);
+  for (const zmienna of ["--przycisk-h", "--przycisk-wciecie", "--przycisk-zaokr", "--przycisk-kroj", "--przycisk-litery", "--linia"]) {
+    assert.match(przycisk.deklaracje, new RegExp(`var\\(${zmienna}\\)`), zmienna);
+  }
+  const [pole] = znajdz(/^\.pole$/);
+  for (const zmienna of ["--pole-h", "--pole-wciecie", "--pole-obramowanie", "--pole-zaokr", "--linia"]) {
+    assert.match(pole.deklaracje, new RegExp(`var\\(${zmienna}\\)`), zmienna);
+  }
+  // Wszystkie odmiany przycisku stoją na jednej wspólnej regule (ta sama wysokość, krój, napis).
+  for (const klasa of ["przycisk-drugi", "przycisk-jasny", "przycisk-cichy"]) {
+    assert.match(przycisk.selektor, new RegExp(`\\.${klasa}(?![\\w-])`), `.${klasa} we wspólnej regule przycisków`);
+  }
+  const [cichy] = znajdz(/^\.przycisk-cichy$/);
+  assert.match(cichy.deklaracje, /background:\s*transparent/, "przycisk cichy bez tła");
+  assert.doesNotMatch(cichy.deklaracje, /border/, "przycisk cichy bez obrysu");
+});
+
+test("strzałka listy wyboru: jeden gradient, rozmiar i pozycja w pełnych pikselach", () => {
+  const bez = CSS_SKALI.replace(/\/\*[\s\S]*?\*\//g, "");
+  const reguly = [...bez.matchAll(/select\.pole:not\(\[multiple\]\)\s*\{([^}]*)\}/g)].map((m) => m[1]);
+  assert.equal(reguly.length, 2, "wersja zwykła i wersja z round()");
+  const [zwykla, zaokraglona] = reguly;
+  // Jeden kształt: dokładnie jeden gradient w obrazku tła (dwa gradienty rozjeżdżały się przy 1440 px).
+  const obraz = /background-image:\s*([^;]+);/.exec(zwykla)[1];
+  assert.equal((obraz.match(/gradient\(/g) ?? []).length, 1, obraz);
+  assert.match(obraz, /currentColor/, "kolor strzałki z koloru tekstu");
+  assert.match(bez, /@supports \(width: round\(1px, 1px\)\)\s*\{\s*select\.pole/, "wersja z round() tylko tam, gdzie działa");
+  assert.match(zaokraglona, /background-size:\s*round\(([^)]+), 2px\) calc\(round\(\1, 2px\) \/ 2\)/, "szerokość parzysta, wysokość połowa");
+  assert.match(zaokraglona, /background-position-x:\s*right round\(var\(--pole-wciecie\), 1px\)/);
+  assert.match(zaokraglona, /background-position-y:\s*round\(50%, 1px\)/);
+  // Wersja z round() nie ruszy obrazka: ten sam jeden gradient.
+  assert.doesNotMatch(zaokraglona, /background-image/);
+});
+
+// ---------- Stan błędu pola ----------
+
+// Dzieli listę selektorów po przecinkach najwyższego poziomu.
+function podziel(lista) {
+  const czesci = [];
+  let glebokosc = 0;
+  let biezaca = "";
+  for (const znak of lista) {
+    if (znak === "(" || znak === "[") glebokosc++;
+    if (znak === ")" || znak === "]") glebokosc--;
+    if (znak === "," && glebokosc === 0) {
+      czesci.push(biezaca.trim());
+      biezaca = "";
+    } else {
+      biezaca += znak;
+    }
+  }
+  if (biezaca.trim()) czesci.push(biezaca.trim());
+  return czesci;
+}
+
+// Rozbiór selektora złożonego (bez spacji i kombinatorów, takie są składniki Skali) na kawałki.
+function kawalki(selektor) {
+  const wynik = [];
+  let i = 0;
+  while (i < selektor.length) {
+    const reszta = selektor.slice(i);
+    let m;
+    if ((m = /^\.([\w-]+)/.exec(reszta))) wynik.push({ rodzaj: "klasa", nazwa: m[1] });
+    else if ((m = /^\[([\w-]+)(?:="([^"]*)")?\]/.exec(reszta))) wynik.push({ rodzaj: "atrybut", nazwa: m[1], wartosc: m[2] });
+    else if ((m = /^::[\w-]+/.exec(reszta))) wynik.push({ rodzaj: "pseudoelement" });
+    else if ((m = /^:([\w-]+)\(/.exec(reszta))) {
+      let glebokosc = 1;
+      let j = m[0].length;
+      while (glebokosc > 0) {
+        if (reszta[j] === "(") glebokosc++;
+        if (reszta[j] === ")") glebokosc--;
+        j++;
+      }
+      wynik.push({ rodzaj: "funkcja", nazwa: m[1], argumenty: podziel(reszta.slice(m[0].length, j - 1)) });
+      m = [reszta.slice(0, j)];
+    } else if ((m = /^:([\w-]+)/.exec(reszta))) wynik.push({ rodzaj: "stan", nazwa: m[1] });
+    else if ((m = /^[a-z][\w-]*/.exec(reszta))) wynik.push({ rodzaj: "znacznik", nazwa: m[0] });
+    else assert.fail(`nieznany kawałek selektora: ${reszta}`);
+    i += m[0].length;
+  }
+  return wynik;
+}
+
+function swoistosc(selektor) {
+  const wynik = [0, 0, 0];
+  for (const k of kawalki(selektor)) {
+    if (k.rodzaj === "funkcja" && k.nazwa === "where") continue;
+    if (k.rodzaj === "funkcja" && ["is", "not", "has"].includes(k.nazwa)) {
+      const najwieksza = k.argumenty.map(swoistosc).sort(porownajSwoistosc).at(-1);
+      najwieksza.forEach((v, n) => (wynik[n] += v));
+    } else if (["klasa", "atrybut", "stan", "funkcja"].includes(k.rodzaj)) wynik[1]++;
+    else wynik[2]++;
+  }
+  return wynik;
+}
+
+function porownajSwoistosc(a, b) {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+}
+
+// Czy selektor pasuje do elementu { znacznik, klasy, atrybuty, stany }.
+function pasuje(selektor, el) {
+  return kawalki(selektor).every((k) => {
+    if (k.rodzaj === "klasa") return el.klasy.includes(k.nazwa);
+    if (k.rodzaj === "atrybut") return k.wartosc === undefined ? k.nazwa in el.atrybuty : el.atrybuty[k.nazwa] === k.wartosc;
+    if (k.rodzaj === "stan") return el.stany.includes(k.nazwa);
+    if (k.rodzaj === "znacznik") return el.znacznik === k.nazwa;
+    if (k.rodzaj === "pseudoelement") return false;
+    if (k.nazwa === "is") return k.argumenty.some((a) => pasuje(a, el));
+    if (k.nazwa === "not") return !k.argumenty.some((a) => pasuje(a, el));
+    return assert.fail(`nieobsłużona funkcja :${k.nazwa}()`);
+  });
+}
+
+// Wartość własności, która wygrywa w warstwie składników dla danego elementu
+// (swoistość, potem kolejność w pliku, jak w przeglądarce). Skróty border/outline się liczą.
+function wygrywa(el, wlasnosc, skrot) {
+  let najlepsza = null;
+  regulyWarstwy(CSS_SKALI, "components").forEach((r, kolejnosc) => {
+    const re = new RegExp(`(?:^|;)\\s*(${wlasnosc}|${skrot})\\s*:\\s*([^;]+)`, "g");
+    const deklaracje = [...r.deklaracje.matchAll(re)];
+    if (deklaracje.length === 0) return;
+    for (const s of podziel(r.selektor)) {
+      if (!pasuje(s, el)) continue;
+      const kandydat = { swoistosc: swoistosc(s), kolejnosc, wartosc: deklaracje.at(-1)[2].trim(), selektor: s };
+      const lepsza = !najlepsza ||
+        porownajSwoistosc(kandydat.swoistosc, najlepsza.swoistosc) > 0 ||
+        (porownajSwoistosc(kandydat.swoistosc, najlepsza.swoistosc) === 0 && kandydat.kolejnosc >= najlepsza.kolejnosc);
+      if (lepsza) najlepsza = kandydat;
+    }
+  });
+  return najlepsza;
+}
+
+const STANY_POLA = [
+  ["zwykły", []],
+  ["najechany", ["hover"]],
+  ["fokus z klawiatury", ["focus-visible"]],
+  ["najechany i fokus", ["hover", "focus-visible"]],
+];
+
+test("sprawdzian kaskady widzi zwykłe pole tak jak przeglądarka", () => {
+  const pole = (stany) => ({ znacznik: "input", klasy: ["pole"], atrybuty: {}, stany });
+  assert.match(wygrywa(pole([]), "border-color", "border").wartosc, /var\(--pole-obramowanie\)/);
+  assert.match(wygrywa(pole(["hover"]), "border-color", "border").wartosc, /var\(--kolor-stonowany\)/);
+  assert.match(wygrywa(pole(["focus-visible"]), "border-color", "border").wartosc, /var\(--pole-fokus\)/);
+  assert.match(wygrywa(pole(["focus-visible"]), "outline-color", "outline").wartosc, /var\(--pole-fokus\)/);
+  assert.deepEqual(swoistosc(".pole:hover:not(:disabled)"), [0, 3, 0]);
+  assert.deepEqual(swoistosc('.pole:is([aria-invalid="true"], .pole-blad)'), [0, 2, 0]);
+  // Uwaga Codexa w liczbach: sama reguła błędu przegrałaby z najechaniem zwykłego pola.
+  assert.ok(porownajSwoistosc(swoistosc('.pole:is([aria-invalid="true"], .pole-blad)'), swoistosc(".pole:hover:not(:disabled)")) < 0);
+});
+
+test("pole z błędem: ramka i obrys w kolorze błędu w każdym stanie, dla obu selektorów", () => {
+  const warianty = [
+    ['aria-invalid="true"', { atrybuty: { "aria-invalid": "true" }, klasy: ["pole"] }],
+    [".pole-blad", { atrybuty: {}, klasy: ["pole", "pole-blad"] }],
+  ];
+  for (const [opis, cechy] of warianty) {
+    for (const znacznik of ["input", "textarea", "select"]) {
+      for (const [stan, stany] of STANY_POLA) {
+        const el = { znacznik, ...cechy, stany };
+        const ramka = wygrywa(el, "border-color", "border");
+        assert.match(ramka.wartosc, /var\(--kolor-blad\)/, `${opis}, ${znacznik}, ${stan}: ramka z ${ramka.selektor}`);
+        if (stany.includes("focus-visible")) {
+          const obrys = wygrywa(el, "outline-color", "outline");
+          assert.match(obrys.wartosc, /var\(--kolor-blad\)/, `${opis}, ${znacznik}, ${stan}: obrys z ${obrys.selektor}`);
+        }
+      }
+    }
+  }
+  // aria-invalid="false" to zwykłe pole.
+  const poprawne = { znacznik: "input", klasy: ["pole"], atrybuty: { "aria-invalid": "false" }, stany: ["hover"] };
+  assert.match(wygrywa(poprawne, "border-color", "border").wartosc, /var\(--kolor-stonowany\)/);
+});
+
+test("kolor błędu: niezależny od marki, czytelny na obu tłach przy każdym odcieniu marki", (t) => {
+  const zm = zmienne(CSS_SKALI);
+  assert.doesNotMatch(zm["--kolor-blad"], /var\(/, "kolor błędu nie zależy od marki ani innych zmiennych");
+  assert.ok(!("--kolor-blad-tlo" in zm), "--kolor-blad-tlo niepotrzebne");
+  let najslabszy = Infinity;
+  for (let h = 0; h < 360; h += 15) {
+    for (const l of ["0.2", "0.52", "0.92"]) {
+      const podmiany = { "--marka-h": String(h), "--marka-l": l };
+      for (const [tlo, prog] of [["--kolor-tlo", 4.5], ["--kolor-tlo-inne", 4.5]]) {
+        const k = kontrast("--kolor-blad", tlo, podmiany);
+        najslabszy = Math.min(najslabszy, k);
+        assert.ok(k >= prog, `marka H ${h} L ${l}: błąd na ${tlo} = ${k.toFixed(2)}`);
+      }
+    }
+  }
+  t.diagnostic(`najsłabszy kontrast koloru błędu do tła: ${najslabszy.toFixed(2)} (komunikat 4,5, ramka 3)`);
+});
+
+test("komunikat pod polem: kolor błędu, stopień tekstu s, bez paska i bez liczb z ręki", () => {
+  const reguly = regulyWarstwy(CSS_SKALI, "components");
+  const komunikat = reguly.filter((r) => /\.pole-komunikat/.test(r.selektor));
+  assert.ok(komunikat.length > 0, "brak .pole-komunikat");
+  for (const r of komunikat) {
+    assert.match(r.deklaracje, /color:\s*var\(--kolor-blad\)/);
+    assert.match(r.deklaracje, /font-size:\s*var\(--tekst-s\)/);
+    assert.doesNotMatch(r.deklaracje, /border|box-shadow|background/, "bez kolorowego paska akcentu");
+  }
+  for (const r of reguly.filter((r) => /pole-blad|aria-invalid|pole-komunikat/.test(r.selektor))) {
+    assert.doesNotMatch(r.deklaracje, /\d\s*(px|rem|em)\b|#[0-9a-f]{3,8}\b|oklch\(|rgb\(/i, r.selektor);
+  }
 });
