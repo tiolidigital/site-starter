@@ -34,7 +34,11 @@ który czyta wyłącznie pliki repo (Codex, Cursor) oraz człowiek zaglądający
   `text-tekst`, `text-stonowany`, `border-obramowanie`, `bg-marka` + `text-na-marce`…).
   Treść z akapitami i listami owijaj w `className="tresc"`.
 - Kształty: `rounded-s/m/l/pelne`, `shadow-s/m/l`, `border-linia`. Przyciski i pola tylko gotowymi klasami
-  `przycisk`, `przycisk-drugi`, `przycisk-jasny`, `przycisk-cichy`, `pole` (bez własnych wysokości, zaokrągleń i cieni).
+  `przycisk`, `przycisk-akcent`, `przycisk-drugi`, `przycisk-jasny`, `przycisk-cichy`, `pole` (bez własnych wysokości, zaokrągleń i cieni).
+- Wielki tytuł pierwszego ekranu: `text-tytul`. Wielkość h1–h3, grubości kroju, akcent i odcień szarości
+  ustawia się wejściami w `app/skala.css` (`--naglowek-1`, `--grubosc-naglowki`, `--akcent-l/c/h`, `--odcien-szarosci`).
+- Własne reguły bazowe strony (`a { … }`, `ul { … }`, `*` …) tylko w `@layer base { … }`. Luzem wygrywają
+  z klasami Skali i np. zabierają napis z przycisku; strażnik to łapie.
 - Nie wpisuj liczb z ręki (`py-16`, `p-[37px]`, `text-2xl`, `bg-zinc-50`, `#abc`, `padding: 16px`,
   `rounded-lg`, `shadow-md`, `border-radius: 8px`)
   ani wariantu `dark:` – strony są zawsze jasne. Pilnuje tego `npm run skala` (część `npm run lint`).

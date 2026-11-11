@@ -27,7 +27,9 @@ const ROZSZERZENIA_KODU = [".tsx", ".jsx", ".astro"];
 // Stopnie przy domyślnych wejściach skali, na komputerze (px). Tylko do podpowiedzi.
 const STOPNIE_ODSTEPU = { xs: 13, s: 20, m: 30, l: 45, xl: 68, xxl: 101 };
 const STOPNIE_SEKCJI = { "sekcja-s": 60, "sekcja-m": 90, "sekcja-l": 135 };
-const STOPNIE_TEKSTU = { xs: 12, s: 13.5, m: 18, l: 24, xl: 32, xxl: 42.6 };
+// Przy domyślnej dolnej granicy tekstu (--tekst-min: 15) xs i s są równe; przy remisie
+// podpowiedź wskazuje s (zwykły mały tekst), dlatego s stoi przed xs.
+const STOPNIE_TEKSTU = { s: 15, xs: 15, m: 18, l: 24, xl: 32, xxl: 42.6, tytul: 64 };
 const ROZMIARY_TAILWINDA = {
   sm: "s",
   base: "m",
@@ -42,7 +44,7 @@ const ROZMIARY_TAILWINDA = {
   "9xl": "xxl",
 };
 const RADA_KOLOR =
-  "użyj koloru według roli: tlo, tlo-inne, tekst, stonowany, obramowanie, obramowanie-mocne, marka, marka-hover, marka-jasny, marka-blady, marka-ciemny, marka-tekst, na-marce (np. bg-tlo, text-stonowany)";
+  "użyj koloru według roli: tlo, tlo-inne, tekst, stonowany, obramowanie, obramowanie-mocne, marka, marka-hover, marka-jasny, marka-blady, marka-ciemny, marka-tekst, na-marce, akcent, akcent-hover, na-akcencie, blad (np. bg-tlo, text-stonowany)";
 
 // Kształty przy domyślnych wejściach (px). Tylko do podpowiedzi.
 const STOPNIE_ZAOKR = { s: 2, m: 4, l: 8 };
@@ -127,9 +129,10 @@ function radaOdstep(prefiks, px) {
 }
 
 function radaTekst(px) {
-  if (px == null) return "użyj stopnia tekstu: text-xs, text-s, text-m, text-l, text-xl, text-xxl";
+  if (px == null) return "użyj stopnia tekstu: text-xs, text-s, text-m, text-l, text-xl, text-xxl albo text-tytul";
   const [nazwa, wartosc] = najblizszy(px, STOPNIE_TEKSTU);
-  return `użyj text-${nazwa} (ok. ${wartosc} px na komputerze)`;
+  const dol = px < STOPNIE_TEKSTU.s ? "; mały tekst nie schodzi poniżej --tekst-min, domyślnie 15 px" : "";
+  return `użyj text-${nazwa} (ok. ${wartosc} px na komputerze${dol})`;
 }
 
 // Sprawdza jedną klasę Tailwinda. Zwraca radę albo null, gdy klasa jest w porządku.
@@ -428,11 +431,94 @@ function sprawdzCss(tresc, naruszenia, przesuniecie = 0) {
   });
 }
 
+// ---------- Warstwy (@layer) ----------
+// Klasy Skali (.przycisk, .pole, .tresc) stoją w warstwie components. Reguła strony
+// spoza warstw wygrywa z każdą regułą w warstwie, bez względu na swoistość, więc
+// luzem „a { color: inherit }” zabiera napis z <a className="przycisk">. Strażnik
+// łapie reguły bazowe (selektor bez klasy, identyfikatora i atrybutu) poza @layer.
+
+const RADA_WARSTWA =
+  "reguła bazowa poza warstwami wygrywa z klasami Skali (np. .przycisk, .pole): włóż ją do @layer base { … }";
+const AT_WARUNKOWE = /^@(media|supports|container|scope|starting-style)\b/;
+
+// Selektor bez klasy, identyfikatora i atrybutu (np. a, h1, *, ::selection, a:hover).
+// Zawartość :not() i :where() się nie liczy (where nie dodaje wagi, not nie wskazuje elementu).
+function selektorBazowy(selektor) {
+  const bez = selektor.replace(/:(not|where)\((?:[^()]|\([^()]*\))*\)/g, "");
+  return !/[.#[&]/.test(bez);
+}
+
+function dzielSelektory(lista) {
+  const czesci = [];
+  let glebokosc = 0;
+  let biezaca = "";
+  for (const znak of lista) {
+    if (znak === "(" || znak === "[") glebokosc++;
+    if (znak === ")" || znak === "]") glebokosc--;
+    if (znak === "," && glebokosc === 0) {
+      czesci.push(biezaca.trim());
+      biezaca = "";
+    } else biezaca += znak;
+  }
+  if (biezaca.trim()) czesci.push(biezaca.trim());
+  return czesci;
+}
+
+function sprawdzWarstwy(tresc, naruszenia, przesuniecie = 0) {
+  // Komentarze na spacje (z zachowaniem nowych linii, żeby numery linii się zgadzały).
+  const czysty = tresc.replace(/\/\*[\s\S]*?\*\//g, (k) => k.replace(/[^\n]/g, " "));
+  const linie = poczatki(czysty);
+  const stos = []; // { rodzaj: "warstwa" | "warunek" | "inne" | "regula" | "zagniezdzona", … }
+  let bufor = "";
+  let poczatekBufora = -1;
+  for (let i = 0; i < czysty.length; i++) {
+    const znak = czysty[i];
+    const gora = stos.at(-1);
+    if (znak === "{") {
+      const prelude = bufor.trim();
+      let wpis;
+      if (gora && (gora.rodzaj === "regula" || gora.rodzaj === "zagniezdzona" || gora.rodzaj === "inne")) {
+        wpis = { rodzaj: "zagniezdzona" };
+      } else if (/^@layer\b/.test(prelude)) wpis = { rodzaj: "warstwa" };
+      else if (AT_WARUNKOWE.test(prelude)) wpis = { rodzaj: "warunek" };
+      else if (prelude.startsWith("@")) wpis = { rodzaj: "inne" };
+      else {
+        const wWarstwie = stos.some((s) => s.rodzaj === "warstwa");
+        const bazowy = !wWarstwie && dzielSelektory(prelude).some(selektorBazowy);
+        wpis = { rodzaj: "regula", bazowy, selektor: prelude, linia: liniaZ(linie, poczatekBufora), deklaracje: "" };
+      }
+      stos.push(wpis);
+      bufor = "";
+      poczatekBufora = -1;
+    } else if (znak === "}") {
+      const zamkniety = stos.pop();
+      if (zamkniety?.rodzaj === "regula" && zamkniety.bazowy) {
+        // Same zmienne (np. :root { --x: 1 }) niczego nie nadpisują w składnikach.
+        const wlasnosci = zamkniety.deklaracje.split(";").map((d) => d.split(":")[0].trim()).filter(Boolean);
+        if (wlasnosci.some((w) => !w.startsWith("--"))) {
+          naruszenia.push({ linia: przesuniecie + zamkniety.linia, co: `${zamkniety.selektor} poza @layer`, rada: RADA_WARSTWA });
+        }
+      }
+      bufor = "";
+      poczatekBufora = -1;
+    } else if (gora?.rodzaj === "regula") {
+      gora.deklaracje += znak;
+    } else if (znak === ";") {
+      bufor = "";
+      poczatekBufora = -1;
+    } else {
+      if (poczatekBufora < 0 && !/\s/.test(znak)) poczatekBufora = i;
+      bufor += znak;
+    }
+  }
+}
+
 // Sprawdza treść jednego pliku. Zwraca listę { linia, co, rada }.
 export function sprawdzPlik(sciezka, tresc) {
   const naruszenia = [];
   if (sciezka.endsWith(".css")) {
     sprawdzCss(tresc, naruszenia);
+    sprawdzWarstwy(tresc, naruszenia);
   } else {
     sprawdzKod(tresc, naruszenia);
     if (sciezka.endsWith(".astro")) {
@@ -442,6 +528,7 @@ export function sprawdzPlik(sciezka, tresc) {
         const start = m.index + m[0].indexOf(">") + 1;
         const linia = tresc.slice(0, start).split("\n").length - 1;
         sprawdzCss(m[1], naruszenia, linia);
+        sprawdzWarstwy(m[1], naruszenia, linia);
       }
     }
   }

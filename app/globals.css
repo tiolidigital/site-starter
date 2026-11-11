@@ -2,5 +2,15 @@
 /* Odstępy, tekst, kolory i domyślne zachowania strony: wszystko w skala.css. */
 @import "./skala.css";
 
+/* Własne reguły bazowe strony (zerowanie, wygląd znaczników: a, img, ul…) wkładaj
+   do @layer base, NIGDY luzem. Reguła poza warstwami wygrywa z każdą klasą Skali
+   (.przycisk, .pole), bez względu na swoistość: luzem „a { color: inherit }”
+   zabiera napis z <a className="przycisk">. Strażnik (npm run skala) to wyłapuje.
+
+   @layer base {
+     a { color: inherit; text-decoration: none; }
+   }
+*/
+
 /* Testy strażnika celowo zawierają złe klasy (py-16, dark:…); nie trafiają do CSS strony. */
 @source not "../scripts";
