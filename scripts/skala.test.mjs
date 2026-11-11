@@ -604,10 +604,11 @@ test("przycisk i pole nigdy niższe niż 44 px (dotyk)", () => {
 // Udział koloru tekstu w kolorze cienia (procent krycia), policzony ze wzoru w CSS.
 function krycieCienia(nazwa, podmiany) {
   const zm = zmienne(CSS_SKALI, podmiany);
-  assert.match(zm[nazwa], /^color-mix\(in oklch, var\(--kolor-tekst\) /, `${nazwa} z koloru tekstu`);
-  const m = /min\(100%, calc\(var\(--sila-cienia\) \* (\d*\.?\d+)%\)\)/.exec(zm[nazwa]);
-  assert.ok(m, `${nazwa}: krycie z siły cienia`);
-  return Math.min(100, policz(zm["--sila-cienia"], 1440) * parseFloat(m[1]));
+  const m = /^oklch\((.+) \/ min\(1, calc\(var\(--sila-cienia\) \* (\d*\.?\d+)\)\)\)$/.exec(zm[nazwa]);
+  assert.ok(m, `${nazwa}: kolor z przezroczystością z siły cienia`);
+  // Te same składowe co kolor tekstu (cień w odcieniu tekstu, więc i marki).
+  assert.equal(`oklch(${m[1]})`, zm["--kolor-tekst"], `${nazwa} z koloru tekstu`);
+  return Math.round(Math.min(1, policz(zm["--sila-cienia"], 1440) * parseFloat(m[2])) * 1000) / 10;
 }
 
 // Największe rozmycie (trzecia długość warstwy) w cieniu.

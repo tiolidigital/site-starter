@@ -262,10 +262,13 @@
 
   --linia: calc(var(--grubosc-linii) * 1px);
 
-  /* Cienie: kolor tekstu z przezroczystością rosnącą z siłą cienia. */
-  --cien-kolor-s: color-mix(in oklch, var(--kolor-tekst) min(100%, calc(var(--sila-cienia) * 6%)), transparent);
-  --cien-kolor-m: color-mix(in oklch, var(--kolor-tekst) min(100%, calc(var(--sila-cienia) * 8%)), transparent);
-  --cien-kolor-l: color-mix(in oklch, var(--kolor-tekst) min(100%, calc(var(--sila-cienia) * 10%)), transparent);
+  /* Cienie: kolor tekstu (te same trzy liczby co --kolor-tekst) z przezroczystością
+     rosnącą z siłą cienia. Celowo nie color-mix(): przy budowie dostaje on zastępczy,
+     pełny kolor tekstu dla starych przeglądarek, czyli czarną smugę zamiast cienia.
+     Ten zapis stara przeglądarka po prostu pominie i nie pokaże cienia. */
+  --cien-kolor-s: oklch(0.22 0.015 var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.06)));
+  --cien-kolor-m: oklch(0.22 0.015 var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.08)));
+  --cien-kolor-l: oklch(0.22 0.015 var(--marka-h) / min(1, calc(var(--sila-cienia) * 0.1)));
   --cien-s: 0 1px 2px var(--cien-kolor-s);
   --cien-m: 0 1px 2px var(--cien-kolor-s), 0 4px 10px var(--cien-kolor-m);
   --cien-l: 0 2px 4px var(--cien-kolor-s), 0 12px 28px var(--cien-kolor-l);
