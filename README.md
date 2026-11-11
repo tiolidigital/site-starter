@@ -124,6 +124,25 @@ Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak s
 
 ---
 
+## Polska typografia: sierotki i wdowy (z automatu)
+
+Na każdej stronie z tego szablonu `<Typografia />` w `app/layout.tsx` po załadowaniu poprawia cały tekst,
+także ten z JSON-a i z bazy, bez ruszania komponentów. Reguły i testy: `lib/typografia.ts`, `scripts/typografia.test.mjs`.
+
+- **Sierotki:** a, i, o, u, w, z dostają twardą spację, także dwa z rzędu („i w relacjach”). To samo dla liczby
+  z jednostką („420 m”, „30 zł”), skrótów („nr 5”, „ul. Polna”, „ok. 20”) i półpauzy we wtrąceniu (nie zaczyna wiersza).
+- **Wdowy** (jedno słowo w ostatnim wierszu): krótkie przenosi sama przeglądarka (`text-wrap: pretty` w skali).
+  Długie słowo z łącznikiem („poznawczo-behawioralną.”) skleja `<Typografia />` z poprzednim słowem, gdy para
+  mieści się w 90% szerokości akapitu. W bardzo wąskiej kolumnie wdowa zostaje i bramka ją zgłasza: wtedy pomaga
+  tylko zmiana tekstu.
+- **Nie pisz własnych twardych spacji ani własnego helpera.** Tekst poza stroną (meta description, mail, PDF):
+  `bezSierot(tekst)` z `lib/typografia.ts`.
+- **Fragment do pominięcia** (kod, logo, nazwa zapisana dosłownie): atrybut `data-bez-typografii`.
+- **Sprawdza to bramka stron** (`factory-kit/scripts/bramka-strony.mjs`): sierotki w tekście i wdowy na złamanym
+  wierszu, na komputerze i telefonie.
+
+---
+
 ## § 1 — Kiedy to już aplikacja (escape-hatch do pełnej ścieżki)
 
 > **Preset `site-build` to przyspieszenie, NIE zamknięcie drzwi.**

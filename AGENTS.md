@@ -44,3 +44,10 @@ który czyta wyłącznie pliki repo (Codex, Cursor) oraz człowiek zaglądający
   ani wariantu `dark:` – strony są zawsze jasne. Pilnuje tego `npm run skala` (część `npm run lint`).
   Świadomy wyjątek: komentarz `skala-ok: <powód>` w tej samej linii.
 - Zmiana liczb w `app/skala.css` wymaga przebudowy strony; testy liczb i strażnika: `npm test`.
+
+## Sierotki i wdowy – z automatu, nie ręcznie
+
+- `<Typografia />` w `app/layout.tsx` poprawia cały tekst strony po załadowaniu (lib/typografia.ts).
+  Nie wpisuj twardych spacji (`&nbsp;`, `\u00a0`) w treści i nie pisz własnego helpera; nie usuwaj komponentu z layoutu.
+- Tekst poza stroną (meta, mail, PDF): `bezSierot(tekst)`. Fragment do pominięcia: `data-bez-typografii`.
+- Wdowę zgłoszoną przez bramkę w wąskiej kolumnie poprawia się tekstem, nie kodem.
