@@ -59,12 +59,22 @@ Jeden zestaw liczb to jedna strona w portfelu: strony nie mogą wyglądać jak s
 - **Pola formularza:** wejścia `--pole-wysokosc`, `--pole-wciecie`, `--pole-obramowanie`, `--pole-zaokr`,
   `--pole-fokus` (kolor obramowania po kliknięciu, z koloru marki). Klasa `pole` na `input`, `textarea`, `select`.
 
+- **Błąd w polu:** `aria-invalid="true"` na polu (albo klasa `pole-blad`) daje ramkę w kolorze błędu
+  w każdym stanie, także po najechaniu i przy obrysie z klawiatury. Komunikat pod polem: klasa `pole-komunikat`
+  (kolor błędu, tekst stopnia s), połączony z polem przez `aria-describedby`, żeby czytnik ekranu go przeczytał.
+  Kolor roli `--kolor-blad` (klasy `text-blad`, `border-blad`) to czerwień niezależna od marki,
+  co najmniej 4,5:1 do obu teł.
+
   ```tsx
   <a href="/kontakt" className="przycisk">Umów rozmowę</a>
   <button type="button" className="przycisk-drugi">Więcej</button>
 
   <label htmlFor="email">Adres e-mail</label>
   <input id="email" type="email" className="pole" placeholder="adres@przyklad.pl" />
+
+  <label htmlFor="telefon">Telefon</label>
+  <input id="telefon" type="tel" className="pole" aria-invalid="true" aria-describedby="telefon-blad" />
+  <p id="telefon-blad" className="pole-komunikat">Wpisz 9 cyfr, np. 600 123 456.</p>
   ```
 - **Strażnik:** `npm run skala` (jest też w `npm run lint`) wyłapuje liczby wpisane z ręki:
   `py-16`, `p-[37px]`, `text-2xl`, `bg-zinc-50`, `bg-[#abc]`, `dark:`, `rounded-lg`, `rounded-[8px]`,

@@ -10,4 +10,4 @@
 ## Pomysły
 
 - Automatyczna kontrola w GitHubie przy każdym wypchnięciu (`npm test` + `npm run lint` ze strażnikiem skali), kopiowana z szablonem do każdej nowej strony. · zaproponowane 2026-11-09
-- Stan błędu pola formularza w Skali: kolor błędu wyliczony w skali (z kontrastem w teście), `.pole[aria-invalid="true"]` i klasa komunikatu pod polem. Formularze kontaktowe Magweru i Manusa dostają go gotowego zamiast wymyślać własną czerwień. · zaproponowane 2026-11-11
+- Stan błędu pola formularza w Skali: kolor błędu wyliczony w skali (z kontrastem w teście), `.pole[aria-invalid="true"]` i klasa komunikatu pod polem. Formularze kontaktowe Magweru i Manusa dostają go gotowego zamiast wymyślać własną czerwień. · zaproponowane 2026-11-11 · zatwierdzone 2026-11-11 (/tak) · zrobione 2026-11-11 na `feat/skala-ksztalty`

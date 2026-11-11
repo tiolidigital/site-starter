@@ -126,6 +126,26 @@ nietknięte.
 Do obejrzenia przez Bazę: strzałka listy wyboru przy 1440 i 320 px (pole zwykłe i wyłączone) oraz rząd „Cichy”
 na stronie próbnej obok przycisku głównego.
 
+## Stan błędu pola (2026-11-11, po /tak Piotrka)
+
+- **Kolor roli `--kolor-blad`:** `oklch(0.5 0.19 27)`, czerwień o stałych liczbach, bez zależności od marki.
+  Kontrast do tła 6,5:1, do innego tła 6,1:1; najsłabszy wynik przy 72 próbkach marek (24 odcienie, 3 jasności) to 6,06:1
+  (wymagane 4,5 dla komunikatu i 3 dla ramki). Klasy `text-blad`, `border-blad`. Zmiennej `--kolor-blad-tlo` nie dodałam,
+  bo nic z niej nie korzysta.
+- **Pole z błędem:** `aria-invalid="true"` (zalecane, czytnik ekranu to ogłasza) albo klasa `pole-blad`. Ramka w kolorze błędu
+  w każdym stanie: zwykłym, najechanym, z obrysem z klawiatury i w obu naraz. Obrys z klawiatury też w kolorze błędu.
+  Uwaga Codexa była trafna: sama reguła błędu ma mniejszą swoistość niż reguła najechania zwykłego pola, więc stan najechany ma
+  własną regułę błędu.
+- **Komunikat `pole-komunikat`:** tekst pod polem w kolorze błędu, stopień tekstu s, bez paska, ramki i tła.
+- **Testy (42 z 42, było 38):** test liczy kaskadę jak przeglądarka (swoistość, potem kolejność w pliku) dla `input`,
+  `textarea` i `select`, obu selektorów i czterech stanów. Najpierw sprawdza, że dla zwykłego pola wychodzi to, co wiadomo
+  (zwykła ramka, ciemniejsza po najechaniu, ramka marki przy fokusie). Sprawdziłam też, że test działa: po usunięciu
+  reguły najechania dla błędu test padł z komunikatem „najechany: ramka z .pole:hover:not(:disabled)”, a po przywróceniu
+  znowu przeszedł. Do tego kontrast przy wielu markach, brak `--kolor-blad-tlo` i brak liczb z ręki w nowych regułach.
+- **README i strona próbna:** opis i przykład z `aria-describedby`. Na `/skala-proba` są trzy pola telefonu z błędem
+  (zwykłe, `data-stan="hover"`, `data-stan="focus"`) z komunikatami oraz pole tekstowe z klasą `pole-blad`.
+- Dotychczasowe wartości i strażnik bez zmian. `npm run lint` czysto, `npm run build` zielono. Zrzutów nie robiłam.
+
 ## Co zostaje
 
 - Strona próbna `app/skala-proba/` do usunięcia przed scaleniem (po zrzutach). Wpisane do `TABLICA.md`.

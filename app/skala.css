@@ -253,6 +253,9 @@
   --kolor-obramowanie: oklch(0.88 0.012 var(--marka-h));
   /* Obramowanie, które musi być widać (pola formularzy): co najmniej 3:1 do tła. */
   --kolor-obramowanie-mocne: oklch(0.6 0.02 var(--marka-h));
+  /* Błąd (pole źle wypełnione): czerwień niezależna od marki, ciemna na tyle,
+     żeby komunikat miał co najmniej 4,5:1 na obu tłach (ramka ma wtedy ponad 3:1). */
+  --kolor-blad: oklch(0.5 0.19 27);
 
   /* Zaokrąglenia: stałe na każdym ekranie. Przy zerowej bazie znika też pigułka. */
   --zaokr-m: calc(var(--baza-zaokr) * 1px);
@@ -353,6 +356,7 @@
   --color-stonowany: var(--kolor-stonowany);
   --color-obramowanie: var(--kolor-obramowanie);
   --color-obramowanie-mocne: var(--kolor-obramowanie-mocne);
+  --color-blad: var(--kolor-blad);
 
   /* Domyślne zaokrąglenia i cienie Tailwinda (rounded-lg, shadow-md…) wyłączone:
      tylko skala. Działają dalej rounded-full (koło), rounded-none i shadow-none. */
@@ -590,6 +594,25 @@
     color: var(--kolor-stonowany);
     border-color: var(--kolor-obramowanie);
     cursor: not-allowed;
+  }
+  /* Pole z błędem: aria-invalid="true" (zalecane, czytniki ekranu to ogłaszają) albo
+     klasa .pole-blad. Ramka w kolorze błędu w KAŻDYM stanie: reguła najechania stoi
+     tu osobno, bo .pole:hover:not(:disabled) ma większą swoistość niż samo
+     .pole:is(…) i bez niej przywróciłaby zwykłą ramkę. */
+  .pole:is([aria-invalid="true"], .pole-blad),
+  .pole:is([aria-invalid="true"], .pole-blad):hover:not(:disabled) {
+    border-color: var(--kolor-blad);
+  }
+  .pole:is([aria-invalid="true"], .pole-blad):focus-visible {
+    border-color: var(--kolor-blad);
+    outline-color: var(--kolor-blad);
+  }
+  /* Komunikat pod polem: zwykły tekst w kolorze błędu, bez paska z boku. */
+  .pole-komunikat {
+    margin: 0;
+    color: var(--kolor-blad);
+    font-size: var(--tekst-s);
+    line-height: var(--wiersz-tekst);
   }
   textarea.pole {
     min-height: calc(var(--pole-h) * 3);

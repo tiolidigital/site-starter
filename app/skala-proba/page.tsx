@@ -91,6 +91,34 @@ export default function SkalaProba() {
                 />
               </div>
             ))}
+            {stany.slice(0, 3).map(([stan, wymus]) => (
+              <div key={`blad-${stan}`} className="flex flex-col gap-xs">
+                <label htmlFor={`pole-blad-${stan}`}>Telefon z błędem ({stan})</label>
+                <input
+                  id={`pole-blad-${stan}`}
+                  type="tel"
+                  className="pole"
+                  defaultValue="12 34"
+                  aria-invalid="true"
+                  aria-describedby={`pole-blad-${stan}-komunikat`}
+                  data-stan={wymus}
+                />
+                <p id={`pole-blad-${stan}-komunikat`} className="pole-komunikat">
+                  Numer ma za mało cyfr. Wpisz 9 cyfr, np. 600 123 456.
+                </p>
+              </div>
+            ))}
+            <div className="flex flex-col gap-xs">
+              <label htmlFor="pole-blad-klasa">Wiadomość z błędem (klasa .pole-blad)</label>
+              <textarea
+                id="pole-blad-klasa"
+                className="pole pole-blad"
+                aria-describedby="pole-blad-klasa-komunikat"
+              />
+              <p id="pole-blad-klasa-komunikat" className="pole-komunikat">
+                Napisz choć kilka słów.
+              </p>
+            </div>
             <div className="flex flex-col gap-xs">
               <label htmlFor="pole-wybor">Temat</label>
               <select id="pole-wybor" className="pole" defaultValue="wspolpraca">

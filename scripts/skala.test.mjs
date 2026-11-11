@@ -401,6 +401,9 @@ const PARY = [
   // Obramowanie pola musi być widać (WCAG 1.4.11: co najmniej 3:1), także na innym tle.
   ["--kolor-obramowanie-mocne", "--kolor-tlo", 3],
   ["--kolor-obramowanie-mocne", "--kolor-tlo-inne", 3],
+  // Komunikat błędu pod polem (tekst) i ramka pola z błędem.
+  ["--kolor-blad", "--kolor-tlo", 4.5],
+  ["--kolor-blad", "--kolor-tlo-inne", 4.5],
 ];
 
 test("kontrast ról: domyślna marka i skrajne", (t) => {
@@ -724,4 +727,178 @@ test("strzałka listy wyboru: jeden gradient, rozmiar i pozycja w pełnych pikse
   assert.match(zaokraglona, /background-position-y:\s*round\(50%, 1px\)/);
   // Wersja z round() nie ruszy obrazka: ten sam jeden gradient.
   assert.doesNotMatch(zaokraglona, /background-image/);
+});
+
+// ---------- Stan błędu pola ----------
+
+// Dzieli listę selektorów po przecinkach najwyższego poziomu.
+function podziel(lista) {
+  const czesci = [];
+  let glebokosc = 0;
+  let biezaca = "";
+  for (const znak of lista) {
+    if (znak === "(" || znak === "[") glebokosc++;
+    if (znak === ")" || znak === "]") glebokosc--;
+    if (znak === "," && glebokosc === 0) {
+      czesci.push(biezaca.trim());
+      biezaca = "";
+    } else {
+      biezaca += znak;
+    }
+  }
+  if (biezaca.trim()) czesci.push(biezaca.trim());
+  return czesci;
+}
+
+// Rozbiór selektora złożonego (bez spacji i kombinatorów, takie są składniki Skali) na kawałki.
+function kawalki(selektor) {
+  const wynik = [];
+  let i = 0;
+  while (i < selektor.length) {
+    const reszta = selektor.slice(i);
+    let m;
+    if ((m = /^\.([\w-]+)/.exec(reszta))) wynik.push({ rodzaj: "klasa", nazwa: m[1] });
+    else if ((m = /^\[([\w-]+)(?:="([^"]*)")?\]/.exec(reszta))) wynik.push({ rodzaj: "atrybut", nazwa: m[1], wartosc: m[2] });
+    else if ((m = /^::[\w-]+/.exec(reszta))) wynik.push({ rodzaj: "pseudoelement" });
+    else if ((m = /^:([\w-]+)\(/.exec(reszta))) {
+      let glebokosc = 1;
+      let j = m[0].length;
+      while (glebokosc > 0) {
+        if (reszta[j] === "(") glebokosc++;
+        if (reszta[j] === ")") glebokosc--;
+        j++;
+      }
+      wynik.push({ rodzaj: "funkcja", nazwa: m[1], argumenty: podziel(reszta.slice(m[0].length, j - 1)) });
+      m = [reszta.slice(0, j)];
+    } else if ((m = /^:([\w-]+)/.exec(reszta))) wynik.push({ rodzaj: "stan", nazwa: m[1] });
+    else if ((m = /^[a-z][\w-]*/.exec(reszta))) wynik.push({ rodzaj: "znacznik", nazwa: m[0] });
+    else assert.fail(`nieznany kawałek selektora: ${reszta}`);
+    i += m[0].length;
+  }
+  return wynik;
+}
+
+function swoistosc(selektor) {
+  const wynik = [0, 0, 0];
+  for (const k of kawalki(selektor)) {
+    if (k.rodzaj === "funkcja" && k.nazwa === "where") continue;
+    if (k.rodzaj === "funkcja" && ["is", "not", "has"].includes(k.nazwa)) {
+      const najwieksza = k.argumenty.map(swoistosc).sort(porownajSwoistosc).at(-1);
+      najwieksza.forEach((v, n) => (wynik[n] += v));
+    } else if (["klasa", "atrybut", "stan", "funkcja"].includes(k.rodzaj)) wynik[1]++;
+    else wynik[2]++;
+  }
+  return wynik;
+}
+
+function porownajSwoistosc(a, b) {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+}
+
+// Czy selektor pasuje do elementu { znacznik, klasy, atrybuty, stany }.
+function pasuje(selektor, el) {
+  return kawalki(selektor).every((k) => {
+    if (k.rodzaj === "klasa") return el.klasy.includes(k.nazwa);
+    if (k.rodzaj === "atrybut") return k.wartosc === undefined ? k.nazwa in el.atrybuty : el.atrybuty[k.nazwa] === k.wartosc;
+    if (k.rodzaj === "stan") return el.stany.includes(k.nazwa);
+    if (k.rodzaj === "znacznik") return el.znacznik === k.nazwa;
+    if (k.rodzaj === "pseudoelement") return false;
+    if (k.nazwa === "is") return k.argumenty.some((a) => pasuje(a, el));
+    if (k.nazwa === "not") return !k.argumenty.some((a) => pasuje(a, el));
+    return assert.fail(`nieobsłużona funkcja :${k.nazwa}()`);
+  });
+}
+
+// Wartość własności, która wygrywa w warstwie składników dla danego elementu
+// (swoistość, potem kolejność w pliku, jak w przeglądarce). Skróty border/outline się liczą.
+function wygrywa(el, wlasnosc, skrot) {
+  let najlepsza = null;
+  regulyWarstwy(CSS_SKALI, "components").forEach((r, kolejnosc) => {
+    const re = new RegExp(`(?:^|;)\\s*(${wlasnosc}|${skrot})\\s*:\\s*([^;]+)`, "g");
+    const deklaracje = [...r.deklaracje.matchAll(re)];
+    if (deklaracje.length === 0) return;
+    for (const s of podziel(r.selektor)) {
+      if (!pasuje(s, el)) continue;
+      const kandydat = { swoistosc: swoistosc(s), kolejnosc, wartosc: deklaracje.at(-1)[2].trim(), selektor: s };
+      const lepsza = !najlepsza ||
+        porownajSwoistosc(kandydat.swoistosc, najlepsza.swoistosc) > 0 ||
+        (porownajSwoistosc(kandydat.swoistosc, najlepsza.swoistosc) === 0 && kandydat.kolejnosc >= najlepsza.kolejnosc);
+      if (lepsza) najlepsza = kandydat;
+    }
+  });
+  return najlepsza;
+}
+
+const STANY_POLA = [
+  ["zwykły", []],
+  ["najechany", ["hover"]],
+  ["fokus z klawiatury", ["focus-visible"]],
+  ["najechany i fokus", ["hover", "focus-visible"]],
+];
+
+test("sprawdzian kaskady widzi zwykłe pole tak jak przeglądarka", () => {
+  const pole = (stany) => ({ znacznik: "input", klasy: ["pole"], atrybuty: {}, stany });
+  assert.match(wygrywa(pole([]), "border-color", "border").wartosc, /var\(--pole-obramowanie\)/);
+  assert.match(wygrywa(pole(["hover"]), "border-color", "border").wartosc, /var\(--kolor-stonowany\)/);
+  assert.match(wygrywa(pole(["focus-visible"]), "border-color", "border").wartosc, /var\(--pole-fokus\)/);
+  assert.match(wygrywa(pole(["focus-visible"]), "outline-color", "outline").wartosc, /var\(--pole-fokus\)/);
+  assert.deepEqual(swoistosc(".pole:hover:not(:disabled)"), [0, 3, 0]);
+  assert.deepEqual(swoistosc('.pole:is([aria-invalid="true"], .pole-blad)'), [0, 2, 0]);
+  // Uwaga Codexa w liczbach: sama reguła błędu przegrałaby z najechaniem zwykłego pola.
+  assert.ok(porownajSwoistosc(swoistosc('.pole:is([aria-invalid="true"], .pole-blad)'), swoistosc(".pole:hover:not(:disabled)")) < 0);
+});
+
+test("pole z błędem: ramka i obrys w kolorze błędu w każdym stanie, dla obu selektorów", () => {
+  const warianty = [
+    ['aria-invalid="true"', { atrybuty: { "aria-invalid": "true" }, klasy: ["pole"] }],
+    [".pole-blad", { atrybuty: {}, klasy: ["pole", "pole-blad"] }],
+  ];
+  for (const [opis, cechy] of warianty) {
+    for (const znacznik of ["input", "textarea", "select"]) {
+      for (const [stan, stany] of STANY_POLA) {
+        const el = { znacznik, ...cechy, stany };
+        const ramka = wygrywa(el, "border-color", "border");
+        assert.match(ramka.wartosc, /var\(--kolor-blad\)/, `${opis}, ${znacznik}, ${stan}: ramka z ${ramka.selektor}`);
+        if (stany.includes("focus-visible")) {
+          const obrys = wygrywa(el, "outline-color", "outline");
+          assert.match(obrys.wartosc, /var\(--kolor-blad\)/, `${opis}, ${znacznik}, ${stan}: obrys z ${obrys.selektor}`);
+        }
+      }
+    }
+  }
+  // aria-invalid="false" to zwykłe pole.
+  const poprawne = { znacznik: "input", klasy: ["pole"], atrybuty: { "aria-invalid": "false" }, stany: ["hover"] };
+  assert.match(wygrywa(poprawne, "border-color", "border").wartosc, /var\(--kolor-stonowany\)/);
+});
+
+test("kolor błędu: niezależny od marki, czytelny na obu tłach przy każdym odcieniu marki", (t) => {
+  const zm = zmienne(CSS_SKALI);
+  assert.doesNotMatch(zm["--kolor-blad"], /var\(/, "kolor błędu nie zależy od marki ani innych zmiennych");
+  assert.ok(!("--kolor-blad-tlo" in zm), "--kolor-blad-tlo niepotrzebne");
+  let najslabszy = Infinity;
+  for (let h = 0; h < 360; h += 15) {
+    for (const l of ["0.2", "0.52", "0.92"]) {
+      const podmiany = { "--marka-h": String(h), "--marka-l": l };
+      for (const [tlo, prog] of [["--kolor-tlo", 4.5], ["--kolor-tlo-inne", 4.5]]) {
+        const k = kontrast("--kolor-blad", tlo, podmiany);
+        najslabszy = Math.min(najslabszy, k);
+        assert.ok(k >= prog, `marka H ${h} L ${l}: błąd na ${tlo} = ${k.toFixed(2)}`);
+      }
+    }
+  }
+  t.diagnostic(`najsłabszy kontrast koloru błędu do tła: ${najslabszy.toFixed(2)} (komunikat 4,5, ramka 3)`);
+});
+
+test("komunikat pod polem: kolor błędu, stopień tekstu s, bez paska i bez liczb z ręki", () => {
+  const reguly = regulyWarstwy(CSS_SKALI, "components");
+  const komunikat = reguly.filter((r) => /\.pole-komunikat/.test(r.selektor));
+  assert.ok(komunikat.length > 0, "brak .pole-komunikat");
+  for (const r of komunikat) {
+    assert.match(r.deklaracje, /color:\s*var\(--kolor-blad\)/);
+    assert.match(r.deklaracje, /font-size:\s*var\(--tekst-s\)/);
+    assert.doesNotMatch(r.deklaracje, /border|box-shadow|background/, "bez kolorowego paska akcentu");
+  }
+  for (const r of reguly.filter((r) => /pole-blad|aria-invalid|pole-komunikat/.test(r.selektor))) {
+    assert.doesNotMatch(r.deklaracje, /\d\s*(px|rem|em)\b|#[0-9a-f]{3,8}\b|oklch\(|rgb\(/i, r.selektor);
+  }
 });
